@@ -1,0 +1,124 @@
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
+local Window = OrionLib:MakeWindow({Name = "Title of the library", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
+
+--[[
+Name = <string> - The name of the UI.
+HidePremium = <bool> - Whether or not the user details shows Premium status or not.
+SaveConfig = <bool> - Toggles the config saving in the UI.
+ConfigFolder = <string> - The name of the folder where the configs are saved.
+IntroEnabled = <bool> - Whether or not to show the intro animation.
+IntroText = <string> - Text to show in the intro animation.
+IntroIcon = <string> - URL to the image you want to use in the intro animation.
+Icon = <string> - URL to the image you want displayed on the window.
+CloseCallback = <function> - Function to execute when the window is closed.
+]]
+
+local Tab = Window:MakeTab({
+	Name = "Mainz",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+local Section = Tab:AddSection({
+	Name = "Auto"
+})
+-- Tab:AddParagraph("Warning🔴","Autotag (RISK) hwid ban")
+Tab:AddToggle({
+	Name = "Auto tag",
+	Default = false,
+	Callback = function(Value)
+		print(Value)
+	end    
+})
+
+Tab:AddToggle({
+	Name = "Team check",
+	Default = false,
+	Callback = function(Value)
+		print(Value)
+	end    
+})
+
+Tab:AddToggle({
+	Name = "Legit tag",
+	Default = false,
+	Callback = function(Value)
+	--  Auto tag random delay  Setiap tag delay acak jika false/off tidak acak
+		print(Value)
+	end    
+})
+Tab:AddToggle({
+	Name = "Auto get coin",
+	Default = false,
+	Callback = function(Value)
+		print(Value)
+	end    
+})
+local Section = Tab:AddSection({
+	Name = "Esp"
+})
+Tab:AddToggle({
+	Name = "Esp players", -- esp name
+	Default = false,
+	Callback = function(Value)
+		print(Value)
+	end    
+})
+
+Tab:AddToggle({
+	Name = "Esp Level",
+	Default = false,
+	Callback = function(Value)
+		print(Value)
+	end    
+})
+
+--------------------
+local Tab = Window:MakeTab({
+	Name = "Player",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+Tab:AddToggle({
+	Name = "Speed boos",
+	Default = false,
+	Callback = function(Value)
+		print(Value)
+	end    
+})
+
+Tab:AddDropdown({
+	Name = "Dropdown",
+	Default = "1",
+	Options = {"1", "2"},
+	Callback = function(Value)
+		print(Value)
+	end    
+})
+local Tab = Window:MakeTab({
+	Name = "Misc",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+local Section = Tab:AddSection({
+	Name = "Another Scripts"
+})
+Tab:AddButton({
+	Name = "Infinite yield",
+	Callback = function()
+	print("button pressed")
+	loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+      		
+  	end    
+})
+Tab:AddParagraph("Warning🔴","Don't Open Dex (RISK) ban")
+Tab:AddButton({
+	Name = "walkfling",
+	Callback = function()
+	print("button pressed")
+loadstring(game:HttpGet(('https://raw.githubusercontent.com/0Ben1/fe/main/obf_rf6iQURzu1fqrytcnLBAvW34C9N55kS9g9G3CKz086rC47M6632sEd4ZZYB0AYgV.lua.txt'),true))()
+      		
+  	end    
+})
+OrionLib:Init()
