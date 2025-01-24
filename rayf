@@ -35,20 +35,515 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Mainz", 4483362458) -- Title, Image
 local Section = Tab:CreateSection("auto")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local autotagEnabled = false
+local teamCheckEnabled = false
+local legitTagEnabled = false
+
+-- Fungsi untuk mengecek tim (memperhitungkan toggle)
+local function checkTeam(localPlayer, targetPlayer)
+    if not teamCheckEnabled then
+        return true -- Jika Team Check tidak aktif, selalu izinkan tagging
+    end
+    if localPlayer.PlayerRole and targetPlayer.PlayerRole then
+        if targetPlayer.PlayerRole.Value == "Dead" then
+            return false -- Jangan tag pemain "Dead"
+        end
+        if localPlayer.PlayerRole.Value == targetPlayer.PlayerRole.Value then
+            return false -- Jangan tag jika role sama
+        end
+    end
+    return true
+end
+
+-- Fungsi untuk mendapatkan pemain terdekat
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local maxDistance = legitTagEnabled and 5 or 7 -- Jarak maksimum berdasarkan Legit Tag
+
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+            local localPosition = LocalPlayer.Character.HumanoidRootPart.Position
+            local distance = (localPosition - targetPosition).Magnitude
+
+            if distance <= maxDistance then
+                if checkTeam(LocalPlayer, targetPlayer) then
+                    closestPlayer = targetPlayer
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- Fungsi untuk melakukan fire langsung
+local function autoFireClosestPlayer()
+    local closestPlayer = getClosestPlayer()
+    if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
+        local args = {
+            [1] = closestPlayer.Character.Humanoid,
+            [2] = closestPlayer.Character.HumanoidRootPart.Position -- Posisi target
+        }
+        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+    end
+end
+
+-- Toggle Auto Tag
+local Toggle1 = Tab:CreateToggle({
+    Name = "Auto tag",
+    CurrentValue = false,
+    Flag = "AutoTagToggle",
+    Callback = function(Value)
+        autotagEnabled = Value
+        if Value then
+            task.spawn(function()
+                while autotagEnabled do
+                    -- Fire pemain terdekat langsung
+                    autoFireClosestPlayer()
+                    
+                    -- Tunggu sedikit untuk menghindari overload server
+                    local waitTime = legitTagEnabled and math.random(4, 6) * 0.1 or 0.1
+                    task.wait(waitTime)
+                end
+            end)
+        end
+    end
+})
+
+-- Toggle Team Check
+local Toggle2 = Tab:CreateToggle({
+    Name = "Team check",
+    CurrentValue = false,
+    Flag = "TeamCheckToggle",
+    Callback = function(Value)
+        teamCheckEnabled = Value
+    end
+})
+
+-- Toggle Legit Tag
+local Toggle3 = Tab:CreateToggle({
+    Name = "Legit tag",
+    CurrentValue = false,
+    Flag = "LegitTagToggle",
+    Callback = function(Value)
+        legitTagEnabled = Value
+    end
+})
+
+local Section = Tab:CreateSection("Hitbox")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local rootSizeEnabled = false -- Toggle utama
+local humanoidRootPartSize = Vector3.new(2, 2, 1) -- Ukuran default
+local humanoidRootPartTransparency = 0 -- Transparansi default
+local humanoidRootPartMaterial = Enum.Material.SmoothPlastic -- Material default
+local noGhostEnabled = false -- Toggle untuk No Ghost
+local teamCheckEnabled = false -- Toggle untuk Team Check
+local rainbowEnabled = true -- Toggle untuk warna pelangi
+
+-- Function untuk membuat warna pelangi (rainbow)
+local function getRainbowColor()
+    local t = tick() % 5 -- Menghasilkan angka dari 0 sampai 5
+    local hue = t / 5 -- Konversi ke rentang 0-1 untuk HSV
+    local color = Color3.fromHSV(hue, 1, 1) -- Konversi HSV ke RGB
+    return color
+end
+
+-- Function untuk mengatur ukuran, material, transparansi, dan warna HumanoidRootPart
+local function updateHumanoidRootPart(character)
+    if not rootSizeEnabled then return end -- Jika toggle false, hentikan fungsi
+
+    if character == LocalPlayer.Character then return end -- Abaikan pemain lokal
+
+    local player = Players:GetPlayerFromCharacter(character)
+    if not player then return end -- Jika tidak ada pemain, hentikan
+
+    local playerrole = player:FindFirstChild("PlayerRole")
+    local localRole = LocalPlayer:FindFirstChild("PlayerRole")
+
+    -- Abaikan jika noGhostEnabled aktif dan PlayerRole = "Dead"
+    if noGhostEnabled and playerrole and playerrole.Value == "Dead" then return end
+
+    -- Abaikan jika teamCheckEnabled aktif dan PlayerRole sama
+    if teamCheckEnabled and localRole and playerrole and localRole.Value == playerrole.Value then return end
+
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        rootPart.Size = humanoidRootPartSize -- Terapkan ukuran
+        rootPart.Transparency = humanoidRootPartTransparency -- Terapkan transparansi
+        rootPart.Material = humanoidRootPartMaterial -- Terapkan material
+
+        -- Terapkan warna pelangi jika PlayerRole adalah "Neutral"
+        if rainbowEnabled and playerrole and playerrole.Value == "Neutral" then
+            task.spawn(function()
+                while rootSizeEnabled and playerrole.Value == "Neutral" do
+                    rootPart.Color = getRainbowColor() -- Terapkan warna pelangi
+                    task.wait(0.1) -- Perbarui warna setiap 0.1 detik
+                end
+            end)
+        end
+    end
+end
+
+-- Function untuk memantau perubahan pada PlayerRole
+local function monitorPlayerRole(player)
+    if player == LocalPlayer then return end -- Abaikan pemain lokal
+
+    -- Function untuk menangani perubahan PlayerRole
+    local function onRoleChanged()
+        if player.Character then
+            updateHumanoidRootPart(player.Character) -- Perbarui hitbox saat PlayerRole berubah
+        end
+    end
+
+    -- Pantau jika PlayerRole sudah ada
+    local playerRole = player:FindFirstChild("PlayerRole")
+    if playerRole then
+        playerRole:GetPropertyChangedSignal("Value"):Connect(onRoleChanged)
+        onRoleChanged() -- Terapkan perubahan awal
+    else
+        -- Tunggu hingga PlayerRole muncul
+        player.ChildAdded:Connect(function(child)
+            if child.Name == "PlayerRole" then
+                child:GetPropertyChangedSignal("Value"):Connect(onRoleChanged)
+                onRoleChanged() -- Terapkan perubahan awal
+            end
+        end)
+    end
+end
+
+-- Function untuk memantau karakter pemain
+local function onCharacterAdded(character)
+    if character == LocalPlayer.Character then return end -- Abaikan pemain lokal
+    character:WaitForChild("Humanoid") -- Tunggu hingga karakter sepenuhnya dimuat
+    updateHumanoidRootPart(character) -- Terapkan pengaturan awal
+
+    -- Hubungkan ke PlayerRole jika belum dilakukan
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        monitorPlayerRole(player)
+    end
+end
+
+-- Function untuk memantau pemain baru
+local function onPlayerAdded(player)
+    if player == LocalPlayer then return end -- Abaikan pemain lokal
+
+    player.CharacterAdded:Connect(onCharacterAdded) -- Pantau karakter baru pemain
+    if player.Character then
+        onCharacterAdded(player.Character) -- Jika karakter sudah ada, atur ukurannya
+    end
+
+    monitorPlayerRole(player) -- Pantau perubahan PlayerRole
+end
+
+-- Pantau semua pemain saat ini
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        onPlayerAdded(player) -- Atur listener untuk setiap pemain yang sudah ada
+    end
+end
+
+-- Pantau pemain yang baru masuk
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- Function untuk mengatur ulang semua HumanoidRootPart saat toggle dinonaktifkan
+local function resetRootParts()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                rootPart.Size = Vector3.new(2, 2, 1)
+                rootPart.Transparency = 0 -- Reset transparansi ke default
+                rootPart.Material = Enum.Material.SmoothPlastic
+                rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
+            end
+        end
+    end
+end
+
+-- Toggle rootSizeEnabled
+local function toggleRootSize(value)
+    rootSizeEnabled = value
+    if not value then
+        resetRootParts() -- Reset semua hitbox saat toggle dimatikan
+    end
+end
+
 local Toggle = Tab:CreateToggle({
-   Name = "Auto tagg",
-   CurrentValue = false,
-   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-   Callback = function(Value)
-   -- The function that takes place when the toggle is pressed
-   -- The variable (Value) is a boolean on whether the toggle is true or false
+    Name = "Enable Hitbox",
+    CurrentValue = false,
+    Flag = "EnableHitboxToggle",
+    Callback = function(value)
+        toggleRootSize(value)
+    end
+})
+
+local Slider = Tab:CreateSlider({
+    Name = "Size",
+    Range = {3, 20},
+    Increment = 0.5,
+    CurrentValue = 2,
+    Flag = "SizeSlider",
+    Callback = function(value)
+        humanoidRootPartSize = Vector3.new(value, value, value)
+        if rootSizeEnabled then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Character and player ~= LocalPlayer then
+                    updateHumanoidRootPart(player.Character)
+                end
+            end
+        end
+    end
+})
+
+local TransparencySlider = Tab:CreateSlider({
+    Name = "Transparency",
+    Range = {0, 1},
+    Increment = 0.1,
+    CurrentValue = 0,
+    Flag = "TransparencySlider",
+    Callback = function(value)
+        humanoidRootPartTransparency = value
+        if rootSizeEnabled then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Character and player ~= LocalPlayer then
+                    updateHumanoidRootPart(player.Character)
+                end
+            end
+        end
+    end
+})
+
+local Dropdown = Tab:CreateDropdown({
+    Name = "Material",
+    Options = {"SmoothPlastic", "Neon", "ForceField", "Glass", "Wood"},
+    CurrentOption = {"SmoothPlastic"},
+    MultipleOptions = false,
+    Flag = "MaterialDropdown",
+    Callback = function(option)
+        humanoidRootPartMaterial = Enum.Material[option[1]]
+        if rootSizeEnabled then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Character and player ~= LocalPlayer then
+                    updateHumanoidRootPart(player.Character)
+                end
+            end
+        end
+    end
+})
+
+local NoGhostToggle = Tab:CreateToggle({
+    Name = "No Ghost",
+    CurrentValue = false,
+    Flag = "NoGhostToggle",
+    Callback = function(value)
+        noGhostEnabled = value
+    end
+})
+
+local TeamCheckToggle = Tab:CreateToggle({
+    Name = "Team Check",
+    CurrentValue = false,
+    Flag = "TeamCheckToggle",
+    Callback = function(value)
+        teamCheckEnabled = value
+    end
+})
+local Section = Tab:CreateSection("Esp")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local espEnabled = false
+local espFolder = Instance.new("Folder", workspace) -- Folder untuk menyimpan semua ESP
+espFolder.Name = "ESPFolder"
+
+-- Function untuk membuat ESP
+local function createESP(player)
+    if player == LocalPlayer then return end -- Jangan buat ESP untuk local player
+    local character = player.Character or player.CharacterAdded:Wait()
+    local head = character:WaitForChild("Head")
+
+    -- Pastikan ESP belum ada
+    if espFolder:FindFirstChild("ESP_" .. player.Name) then return end
+
+    -- Membuat BillboardGui untuk teks
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_" .. player.Name
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(4, 0, 1, 0) -- Ukuran Billboard
+    billboard.StudsOffset = Vector3.new(0, 2, 0) -- Offset posisi di atas kepala
+    billboard.AlwaysOnTop = true -- Selalu terlihat
+
+    -- Membuat TextLabel untuk nama pemain
+    local textLabel = Instance.new("TextLabel", billboard)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1 -- Tidak ada latar belakang
+    textLabel.Text = player.Name -- Nama pemain
+    textLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Warna teks merah
+    textLabel.TextScaled = true -- Teks disesuaikan dengan ukuran label
+    textLabel.Font = Enum.Font.GothamBold -- Gaya font
+
+    -- Menambahkan BillboardGui ke folder
+    billboard.Parent = espFolder
+end
+
+-- Function untuk menghapus ESP
+local function removeESP(player)
+    local esp = espFolder:FindFirstChild("ESP_" .. player.Name)
+    if esp then
+        esp:Destroy()
+    end
+end
+
+-- Fungsi untuk mendapatkan level dari Player.LocalPlayer
+local function getPlayerLevel()
+    local stats = LocalPlayer:FindFirstChild("Stats")
+    if stats then
+        local level = stats:FindFirstChild("Level")
+        if level and level:IsA("NumberValue") then
+            return level.Value -- Kembalikan nilai level
+        end
+    end
+    return nil -- Jika Level tidak ditemukan
+end
+
+-- Fungsi untuk toggle ESP berdasarkan level
+local function toggleESP(levelEnabled)
+    local level = getPlayerLevel()
+    if level then
+        if level >= 10 then
+            espEnabled = levelEnabled
+            print("ESP diaktifkan. Level:", level)
+            if espEnabled then
+                for _, player in ipairs(Players:GetPlayers()) do
+                    createESP(player)
+                end
+            else
+                espFolder:ClearAllChildren() -- Hapus semua ESP saat dinonaktifkan
+            end
+        else
+            espEnabled = false
+            print("ESP dinonaktifkan. Level terlalu rendah:", level)
+            espFolder:ClearAllChildren() -- Hapus semua ESP jika level terlalu rendah
+        end
+    else
+        print("Tidak dapat menemukan Level di Player.LocalPlayer.Stats.")
+    end
+end
+
+-- Pantau pemain baru dan tambahkan ESP jika diaktifkan
+Players.PlayerAdded:Connect(function(player)
+    if espEnabled then
+        player.CharacterAdded:Connect(function()
+            createESP(player)
+        end)
+    end
+end)
+
+-- GUI
+Tab:CreateToggle({
+    Name = "ESP Players",
+    CurrentValue = false,
+    Flag = "ESPPlayersToggle",
+    Callback = function(Value)
+        espEnabled = Value
+        if espEnabled then
+            for _, player in ipairs(Players:GetPlayers()) do
+                createESP(player)
+            end
+        else
+            espFolder:ClearAllChildren() -- Hapus semua ESP saat toggle dimatikan
+        end
+        print("ESP Players:", Value)
+    end
+})
+
+Tab:CreateToggle({
+    Name = "ESP Level",
+    CurrentValue = false,
+    Flag = "ESPLevelToggle",
+    Callback = function(Value)
+        toggleESP(Value) -- Hubungkan toggle level ke fungsi toggleESP
+        print("ESP Level Toggle:", Value)
+    end
+})
+local Tab = Window:CreateTab("Player", 4483362458) -- Title, Image
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local tpwalking = false
+local speedMultiplier = 1 -- Default multiplier
+
+-- Function to toggle speed boost
+local function toggleSpeedBoost(enabled)
+    tpwalking = enabled
+    if enabled then
+        local chr = player.Character
+        local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+        while tpwalking and chr and hum and hum.Parent do
+            local delta = RunService.Heartbeat:Wait()
+            if hum.MoveDirection.Magnitude > 0 then
+                chr:TranslateBy(hum.MoveDirection * speedMultiplier * delta * 10)
+            end
+        end
+    end
+end
+
+-- GUI Toggle
+local Toggle = Tab:CreateToggle({
+    Name = "Speed Boost",
+    CurrentValue = false,
+    Flag = "SpeedBoostToggle", -- Unique identifier
+    Callback = function(Value)
+        toggleSpeedBoost(Value) -- Enable or disable speed boost
+        if not Value then
+            print("Speed boost disabled")
+        else
+            print("Speed boost enabled")
+        end
+    end,
+})
+
+-- GUI Dropdown
+local Dropdown = Tab:CreateDropdown({
+    Name = "Speed Multiplier",
+    Options = {"1", "2", "3", "4", "5", "6"}, -- Multiplier options
+    CurrentOption = {"1"},
+    MultipleOptions = false,
+    Flag = "SpeedMultiplierDropdown", -- Unique identifier
+    Callback = function(Options)
+        speedMultiplier = tonumber(Options[1]) -- Update multiplier based on dropdown selection
+        print("Speed multiplier set to:", Options[1])
+    end,
+})
+local Tab = Window:CreateTab("Misc", 4483362458) -- Title, Image
+local Section = Tab:CreateSection("Another script")
+local Paragraph = Tab:CreateParagraph({Title = "Warning🔴", Content = "Don't Open Dex and infinite yield (RISK) ban"})
+local Button = Tab:CreateButton({
+   Name = "walkfling gui",
+   Callback = function()
+      loadstring(game:HttpGet(('https://raw.githubusercontent.com/0Ben1/fe/main/obf_rf6iQURzu1fqrytcnLBAvW34C9N55kS9g9G3CKz086rC47M6632sEd4ZZYB0AYgV.lua.txt'),true))()
+   end,
+})local Button = Tab:CreateButton({
+   Name = "IY SC",
+   Callback = function()
+   loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
    end,
 })
-local Section = Tab:CreateSection("hitbox")
 Rayfield:Notify({
    Title = "Welcome",
    Content = "Yo whysoserius?",
    Duration = 6.5,
    Image = 4483362458,
 })
-Rayfield:LoadConfiguration()
