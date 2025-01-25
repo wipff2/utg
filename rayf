@@ -168,10 +168,28 @@ local function updateHumanoidRootPart(character)
     local localRole = LocalPlayer:FindFirstChild("PlayerRole")
 
     -- Abaikan jika noGhostEnabled aktif dan PlayerRole = "Dead"
-    if noGhostEnabled and playerrole and playerrole.Value == "Dead" then return end
+    if noGhostEnabled and playerrole and playerrole.Value == "Dead" then
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if rootPart then
+            rootPart.Size = Vector3.new(2, 2, 1) -- Reset ukuran ke default
+            rootPart.Transparency = 0 -- Reset transparansi ke default
+            rootPart.Material = Enum.Material.SmoothPlastic -- Reset material ke default
+            rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
+        end
+        return
+    end
 
     -- Abaikan jika teamCheckEnabled aktif dan PlayerRole sama
-    if teamCheckEnabled and localRole and playerrole and localRole.Value == playerrole.Value then return end
+    if teamCheckEnabled and localRole and playerrole and localRole.Value == playerrole.Value then
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if rootPart then
+            rootPart.Size = Vector3.new(2, 2, 1) -- Reset ukuran ke default
+            rootPart.Transparency = 0 -- Reset transparansi ke default
+            rootPart.Material = Enum.Material.SmoothPlastic -- Reset material ke default
+            rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
+        end
+        return
+    end
 
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if rootPart then
@@ -268,14 +286,30 @@ local function resetRootParts()
     end
 end
 
--- Toggle rootSizeEnabled
+-- Function untuk mengaktifkan/menonaktifkan rootSizeEnabled
 local function toggleRootSize(value)
     rootSizeEnabled = value
     if not value then
         resetRootParts() -- Reset semua hitbox saat toggle dimatikan
+    else
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character and player ~= LocalPlayer then
+                updateHumanoidRootPart(player.Character) -- Perbarui hitbox saat toggle diaktifkan
+            end
+        end
     end
 end
 
+-- Function untuk memperbarui semua hitbox saat noGhostEnabled atau teamCheckEnabled berubah
+local function updateAllHitboxes()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player ~= LocalPlayer then
+            updateHumanoidRootPart(player.Character)
+        end
+    end
+end
+
+-- Toggle rootSizeEnabled
 local Toggle = Tab:CreateToggle({
     Name = "Enable Hitbox",
     CurrentValue = false,
@@ -285,6 +319,7 @@ local Toggle = Tab:CreateToggle({
     end
 })
 
+-- Slider untuk mengatur ukuran hitbox
 local Slider = Tab:CreateSlider({
     Name = "Size",
     Range = {3, 20},
@@ -294,15 +329,12 @@ local Slider = Tab:CreateSlider({
     Callback = function(value)
         humanoidRootPartSize = Vector3.new(value, value, value)
         if rootSizeEnabled then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player.Character and player ~= LocalPlayer then
-                    updateHumanoidRootPart(player.Character)
-                end
-            end
+            updateAllHitboxes() -- Perbarui semua hitbox saat ukuran diubah
         end
     end
 })
 
+-- Slider untuk mengatur transparansi hitbox
 local TransparencySlider = Tab:CreateSlider({
     Name = "Transparency",
     Range = {0, 1},
@@ -312,15 +344,12 @@ local TransparencySlider = Tab:CreateSlider({
     Callback = function(value)
         humanoidRootPartTransparency = value
         if rootSizeEnabled then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player.Character and player ~= LocalPlayer then
-                    updateHumanoidRootPart(player.Character)
-                end
-            end
+            updateAllHitboxes() -- Perbarui semua hitbox saat transparansi diubah
         end
     end
 })
 
+-- Dropdown untuk memilih material hitbox
 local Dropdown = Tab:CreateDropdown({
     Name = "Material",
     Options = {"SmoothPlastic", "Neon", "ForceField", "Glass", "Wood"},
@@ -330,30 +359,34 @@ local Dropdown = Tab:CreateDropdown({
     Callback = function(option)
         humanoidRootPartMaterial = Enum.Material[option[1]]
         if rootSizeEnabled then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player.Character and player ~= LocalPlayer then
-                    updateHumanoidRootPart(player.Character)
-                end
-            end
+            updateAllHitboxes() -- Perbarui semua hitbox saat material diubah
         end
     end
 })
 
+-- Toggle untuk No Ghost
 local NoGhostToggle = Tab:CreateToggle({
     Name = "No Ghost",
     CurrentValue = false,
     Flag = "NoGhostToggle",
     Callback = function(value)
         noGhostEnabled = value
+        if rootSizeEnabled then
+            updateAllHitboxes() -- Perbarui semua hitbox saat No Ghost diubah
+        end
     end
 })
 
+-- Toggle untuk Team Check
 local TeamCheckToggle = Tab:CreateToggle({
     Name = "Team Check",
     CurrentValue = false,
     Flag = "TeamCheckToggle",
     Callback = function(value)
         teamCheckEnabled = value
+        if rootSizeEnabled then
+            updateAllHitboxes() -- Perbarui semua hitbox saat Team Check diubah
+        end
     end
 })
 local Section = Tab:CreateSection("Esp")
