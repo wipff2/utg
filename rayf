@@ -58,11 +58,10 @@ local function checkTeam(localPlayer, targetPlayer)
     return true
 end
 
--- Fungsi untuk mendapatkan pemain terdekat
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
-    local maxDistance = legitTagEnabled and 5 or 7 -- Jarak maksimum berdasarkan Legit Tag
+    local maxDistance = legitTagEnabled and 7 or 9 -- Jika Legit Tag aktif, jarak maksimum 7; jika tidak, 9
 
     for _, targetPlayer in pairs(Players:GetPlayers()) do
         if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
