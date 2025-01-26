@@ -7,10 +7,10 @@ local Window = Rayfield:CreateWindow({
    Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
 
    DisableRayfieldPrompts = false,
-   DisableBuildWarnings = true, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
 
    ConfigurationSaving = {
-      Enabled = true,
+      Enabled = false,
       FolderName = Utgsfiles, -- Create a custom folder for your hub/game
       FileName = "Utgfile"
    },
@@ -42,6 +42,7 @@ local autotagEnabled = false
 local teamCheckEnabled = false
 local legitTagEnabled = false
 
+-- Fungsi untuk memeriksa tim pemain
 local function checkTeam(localPlayer, targetPlayer)
     if not teamCheckEnabled then
         return true -- Jika Team Check tidak aktif, selalu izinkan tagging
@@ -59,32 +60,56 @@ local function checkTeam(localPlayer, targetPlayer)
         return true -- Izinkan tagging jika pemain memiliki peran "Neutral" atau "FFATagger"
     end
 
-    -- Cari nama pemain di dalam folder PlayerHighlights
+    -- Cari nama pemain di dalam folder PlayerHighlights berdasarkan role dan nama
     local targetPlayerName = targetPlayer.Name
-    for _, highlight in pairs(playerHighlightsFolder:GetChildren()) do
-        if highlight.Name == targetPlayerName then
-            return true -- Jika nama pemain ditemukan di dalam folder PlayerHighlights, izinkan tagging
+    for _, roleFolder in pairs(playerHighlightsFolder:GetChildren()) do
+        if roleFolder:IsA("Folder") then -- Pastikan ini adalah folder role (misalnya "Runner")
+            local playerModel = roleFolder:FindFirstChild(targetPlayerName)
+            if playerModel then
+                return true -- Jika nama pemain ditemukan di dalam folder role, izinkan tagging
+            end
         end
     end
 
     return false -- Jika nama pemain tidak ditemukan, jangan izinkan tagging
 end
 
+-- Fungsi untuk mendapatkan pemain terdekat
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
     local maxDistance = legitTagEnabled and 7 or 9 -- Jika Legit Tag aktif, jarak maksimum 7; jika tidak, 9
 
+    -- Dapatkan Gamemode dan PlayerRole saya
+    local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
+    local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
+    local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
+
     for _, targetPlayer in pairs(Players:GetPlayers()) do
         if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            -- Cek apakah pemain target memiliki PlayerRole "Dead"
+            local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
+            if targetPlayerRole and targetPlayerRole.Value == "Dead" then
+                continue -- Lewati pemain dengan PlayerRole "Dead"
+            end
+
             local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
             local localPosition = LocalPlayer.Character.HumanoidRootPart.Position
             local distance = (localPosition - targetPosition).Magnitude
 
             if distance <= maxDistance then
-                if checkTeam(LocalPlayer, targetPlayer) then
-                    closestPlayer = targetPlayer
-                    shortestDistance = distance
+                -- Logika baru: Jika saya Dead dan Gamemode adalah Chaos/Crown/SoloCrown, hanya tag pemain dengan role Crown
+                if myPlayerRole == "Dead" and (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
+                    if targetPlayerRole and targetPlayerRole.Value == "Crown" then
+                        closestPlayer = targetPlayer
+                        shortestDistance = distance
+                    end
+                else
+                    -- Logika biasa: Gunakan checkTeam
+                    if checkTeam(LocalPlayer, targetPlayer) then
+                        closestPlayer = targetPlayer
+                        shortestDistance = distance
+                    end
                 end
             end
         end
@@ -97,13 +122,61 @@ end
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
-        local args = {
-            [1] = closestPlayer.Character.Humanoid,
-            [2] = closestPlayer.Character.HumanoidRootPart.Position -- Posisi target
-        }
-        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+        -- Panggil checkTeam untuk memastikan pengecekan terbaru
+        if checkTeam(LocalPlayer, closestPlayer) then
+            -- Buat args sesuai contoh yang diberikan
+            local args = {
+                [1] = closestPlayer.Character.Humanoid, -- Humanoid pemain terdekat
+                [2] = closestPlayer.Character.HumanoidRootPart.Position -- Posisi pemain terdekat
+            }
+
+            -- Fire tag pemain terdekat
+            ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+        else
+            warn("Player is not a valid target for tagging.")
+        end
+    else
+        warn("No valid player found to tag.")
     end
 end
+
+-- Fungsi untuk memantau perubahan pada PlayerRole
+local function monitorPlayerRole(targetPlayer)
+    local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
+    if targetPlayerRole then
+        targetPlayerRole:GetPropertyChangedSignal("Value"):Connect(function()
+            print("PlayerRole changed for:", targetPlayer.Name, "New role:", targetPlayerRole.Value)
+            -- Lakukan pengecekan ulang atau tindakan lain
+        end)
+    end
+end
+
+-- Fungsi untuk memantau perubahan pada PlayerHighlights
+local function monitorPlayerHighlights()
+    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
+    if playerHighlightsFolder then
+        playerHighlightsFolder.ChildAdded:Connect(function(child)
+            -- Lakukan pengecekan ulang atau tindakan lain
+        end)
+
+        playerHighlightsFolder.ChildRemoved:Connect(function(child)
+            -- Lakukan pengecekan ulang atau tindakan lain
+        end)
+    end
+end
+
+-- Pantau perubahan pada PlayerRole untuk semua pemain
+for _, player in pairs(Players:GetPlayers()) do
+    monitorPlayerRole(player)
+end
+
+-- Pantau pemain baru yang bergabung
+Players.PlayerAdded:Connect(function(player)
+    monitorPlayerRole(player)
+end)
+
+-- Pantau perubahan pada PlayerHighlights
+monitorPlayerHighlights()
 
 -- Toggle Auto Tag
 local Toggle1 = Tab:CreateToggle({
@@ -115,9 +188,20 @@ local Toggle1 = Tab:CreateToggle({
         if Value then
             task.spawn(function()
                 while autotagEnabled do
+                    -- Cek Gamemode sebelum melakukan tagging
+                    local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
+                    local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
+                    local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
+
+                    -- Logika baru: Jika Gamemode bukan Chaos/Crown/SoloCrown dan saya Dead, hentikan tagging
+                    if myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
+                        task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
+                        continue
+                    end
+
                     -- Fire pemain terdekat langsung
                     autoFireClosestPlayer()
-                    
+
                     -- Tunggu sedikit untuk menghindari overload server
                     local waitTime = legitTagEnabled and math.random(4, 6) * 0.1 or 0.3
                     task.wait(waitTime)
