@@ -395,8 +395,8 @@ local TeamCheckToggle = Tab:CreateToggle({
     end
 })
 local Section = Tab:CreateSection("Esp")
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local espEnabled = false
@@ -423,11 +423,13 @@ local function createESP(player)
     -- Membuat TextLabel untuk nama pemain
     local textLabel = Instance.new("TextLabel", billboard)
     textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1 -- Tidak ada latar belakang
+    textLabel.BackgroundTransparency = 0.5 -- Transparansi latar belakang 50%
+    textLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Warna latar belakang hitam
     textLabel.Text = player.Name -- Nama pemain
     textLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Warna teks merah
     textLabel.TextScaled = true -- Teks disesuaikan dengan ukuran label
     textLabel.Font = Enum.Font.GothamBold -- Gaya font
+    textLabel.BorderSizePixel = 0 -- Hilangkan border
 
     -- Menambahkan BillboardGui ke folder
     billboard.Parent = espFolder
@@ -501,16 +503,6 @@ Tab:CreateToggle({
             espFolder:ClearAllChildren() -- Hapus semua ESP saat toggle dimatikan
         end
         print("ESP Players:", Value)
-    end
-})
-
-Tab:CreateToggle({
-    Name = "ESP Level",
-    CurrentValue = false,
-    Flag = "ESPLevelToggle",
-    Callback = function(Value)
-        toggleESP(Value) -- Hubungkan toggle level ke fungsi toggleESP
-        print("ESP Level Toggle:", Value)
     end
 })
 local Tab = Window:CreateTab("Player", 4483362458) -- Title, Image
