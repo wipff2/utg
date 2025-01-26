@@ -44,23 +44,13 @@ local legitTagEnabled = false
 
 -- Fungsi untuk memeriksa tim pemain
 local function checkTeam(localPlayer, targetPlayer)
-    if not teamCheckEnabled then
-        return true -- Jika Team Check tidak aktif, selalu izinkan tagging
-    end
-
     -- Cari folder PlayerHighlights di Workspace
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
     if not playerHighlightsFolder then
         return false -- Jika folder tidak ditemukan, tidak ada pemain yang boleh di-tag
     end
 
-    -- Cek apakah pemain target memiliki peran "Neutral" atau "FFATagger"
-    local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
-    if targetPlayerRole and (targetPlayerRole.Value == "Neutral" or targetPlayerRole.Value == "FFATagger") then
-        return true -- Izinkan tagging jika pemain memiliki peran "Neutral" atau "FFATagger"
-    end
-
-    -- Cari nama pemain di dalam folder PlayerHighlights berdasarkan role dan nama
+    -- Cari nama pemain di dalam folder PlayerHighlights
     local targetPlayerName = targetPlayer.Name
     for _, roleFolder in pairs(playerHighlightsFolder:GetChildren()) do
         if roleFolder:IsA("Folder") then -- Pastikan ini adalah folder role (misalnya "Runner")
@@ -78,7 +68,7 @@ end
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
-    local maxDistance = legitTagEnabled and 7 or 9 -- Jika Legit Tag aktif, jarak maksimum 7; jika tidak, 9
+    local maxDistance = legitTagEnabled and 5 or 6 -- Jika Legit Tag aktif, jarak maksimum 7; jika tidak, 9
 
     -- Dapatkan Gamemode dan PlayerRole saya
     local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
@@ -140,8 +130,9 @@ local function autoFireClosestPlayer()
     end
 end
 
--- Fungsi untuk memantau perubahan pada PlayerRole
 local function monitorPlayerRole(targetPlayer)
+    if not autotagEnabled then return end -- Hanya jalankan jika autotagEnabled aktif
+
     local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
     if targetPlayerRole then
         targetPlayerRole:GetPropertyChangedSignal("Value"):Connect(function()
@@ -151,8 +142,9 @@ local function monitorPlayerRole(targetPlayer)
     end
 end
 
--- Fungsi untuk memantau perubahan pada PlayerHighlights
 local function monitorPlayerHighlights()
+    if not autotagEnabled then return end -- Hanya jalankan jika autotagEnabled aktif
+
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
     if playerHighlightsFolder then
         playerHighlightsFolder.ChildAdded:Connect(function(child)
@@ -167,18 +159,26 @@ end
 
 -- Pantau perubahan pada PlayerRole untuk semua pemain
 for _, player in pairs(Players:GetPlayers()) do
-    monitorPlayerRole(player)
+    if autotagEnabled then
+        monitorPlayerRole(player)
+    end
 end
 
 -- Pantau pemain baru yang bergabung
 Players.PlayerAdded:Connect(function(player)
-    monitorPlayerRole(player)
+    if autotagEnabled then
+        monitorPlayerRole(player)
+    end
 end)
+
+-- Pantau perubahan pada PlayerHighlights
+if autotagEnabled then
+    monitorPlayerHighlights()
+end
 
 -- Pantau perubahan pada PlayerHighlights
 monitorPlayerHighlights()
 
--- Toggle Auto Tag
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
     CurrentValue = false,
@@ -186,6 +186,15 @@ local Toggle1 = Tab:CreateToggle({
     Callback = function(Value)
         autotagEnabled = Value
         if Value then
+            -- Mulai pemantauan PlayerRole untuk semua pemain yang sudah ada
+            for _, player in pairs(Players:GetPlayers()) do
+                monitorPlayerRole(player)
+            end
+
+            -- Mulai pemantauan PlayerHighlights
+            monitorPlayerHighlights()
+
+            -- Mulai loop auto tag
             task.spawn(function()
                 while autotagEnabled do
                     -- Cek Gamemode sebelum melakukan tagging
@@ -203,10 +212,13 @@ local Toggle1 = Tab:CreateToggle({
                     autoFireClosestPlayer()
 
                     -- Tunggu sedikit untuk menghindari overload server
-                    local waitTime = legitTagEnabled and math.random(4, 6) * 0.1 or 0.3
+                    local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
                     task.wait(waitTime)
                 end
             end)
+        else
+            -- Hentikan semua pemantauan dan loop auto tag
+            -- (Tidak perlu melakukan apa-apa karena semua fungsi sudah memiliki pengecekan autotagEnabled)
         end
     end
 })
