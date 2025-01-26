@@ -53,11 +53,17 @@ local function checkTeam(localPlayer, targetPlayer)
         return false -- Jika folder tidak ditemukan, tidak ada pemain yang boleh di-tag
     end
 
-    -- Cari nama pemain di semua children di folder PlayerHighlights
+    -- Cek apakah pemain target memiliki peran "Neutral" atau "FFATagger"
+    local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
+    if targetPlayerRole and (targetPlayerRole.Value == "Neutral" or targetPlayerRole.Value == "FFATagger") then
+        return true -- Izinkan tagging jika pemain memiliki peran "Neutral" atau "FFATagger"
+    end
+
+    -- Cari nama pemain di dalam folder PlayerHighlights
     local targetPlayerName = targetPlayer.Name
     for _, highlight in pairs(playerHighlightsFolder:GetChildren()) do
         if highlight.Name == targetPlayerName then
-            return true -- Jika nama pemain ditemukan, izinkan tagging
+            return true -- Jika nama pemain ditemukan di dalam folder PlayerHighlights, izinkan tagging
         end
     end
 
