@@ -505,8 +505,176 @@ Tab:CreateToggle({
         print("ESP Players:", Value)
     end
 })
-local Tab = Window:CreateTab("Player", 4483362458) -- Title, Image
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+local ToggleNeutralESP = false -- Default toggle state
 
+-- Fungsi untuk membuat ESP
+local function createESP(player)
+    local character = player.Character
+    if not character then return end
+
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+
+    -- Buat BillboardGui untuk menampilkan teks
+    local billboard = Instance.new("BillboardGui")
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Text = player.Name .. " (Neutral)"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.TextColor3 = Color3.new(1, 1, 1) -- Warna teks putih
+    textLabel.BackgroundTransparency = 1
+    textLabel.Parent = billboard
+
+    billboard.Parent = player.Character
+end
+
+-- Fungsi untuk menghapus ESP
+local function removeESP(player)
+    local character = player.Character
+    if character then
+        for _, child in pairs(character:GetChildren()) do
+            if child:IsA("BillboardGui") then
+                child:Destroy()
+            end
+        end
+    end
+end
+
+-- Fungsi untuk memeriksa peran pemain
+local function checkPlayerRole(player)
+    if player:GetAttribute("PlayerRole") == "Neutral" then
+        createESP(player)
+    else
+        removeESP(player)
+    end
+end
+
+-- Toggle untuk mengaktifkan/menonaktifkan ESP
+local Toggle = Tab:CreateToggle({
+    Name = "Neutral ESP",
+    CurrentValue = false,
+    Flag = "ToggleNeutralESP", -- Pastikan flag ini unik
+    Callback = function(Value)
+        ToggleNeutralESP = Value
+        if Value then
+            -- Aktifkan ESP
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= Player then
+                    checkPlayerRole(player)
+                end
+            end
+        else
+            -- Nonaktifkan ESP
+            for _, player in pairs(Players:GetPlayers()) do
+                removeESP(player)
+            end
+        end
+    end,
+})
+
+-- Memantau perubahan PlayerRole
+Players.PlayerAdded:Connect(function(player)
+    player:GetAttributeChangedSignal("PlayerRole"):Connect(function()
+        if ToggleNeutralESP then
+            checkPlayerRole(player)
+        end
+    end)
+end)
+
+for _, player in pairs(Players:GetPlayers()) do
+    player:GetAttributeChangedSignal("PlayerRole"):Connect(function()
+        if ToggleNeutralESP then
+            checkPlayerRole(player)
+        end
+    end)
+end
+
+-- Memantau karakter yang dimuat
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        if ToggleNeutralESP then
+            checkPlayerRole(player)
+        end
+    end)
+end)
+
+for _, player in pairs(Players:GetPlayers()) do
+    player.CharacterAdded:Connect(function()
+        if ToggleNeutralESP then
+            checkPlayerRole(player)
+    end)
+end
+local Tab = Window:CreateTab("Player", 4483362458) -- Title, Image
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local Input = Tab:CreateInput({
+    Name = "Set Speed",
+    CurrentValue = "",
+    PlaceholderText = "Type 'speed <value>' and press Enter",
+    RemoveTextAfterFocusLost = false,
+    Flag = "InputSpeed",
+    Callback = function(Text)
+        -- Memeriksa apakah input dimulai dengan "speed"
+        if Text:lower():sub(1, 5) == "speed" then
+            -- Mengambil nilai kecepatan dari input
+            local speedValue = tonumber(Text:sub(7))
+            if speedValue then
+                -- Mengatur kecepatan Humanoid
+                Humanoid.WalkSpeed = speedValue
+                print("Speed set to:", speedValue)
+            else
+                print("Invalid speed value. Please type 'speed <number>'.")
+            end
+        else
+            print("Invalid command. Please type 'speed <number>'.")
+        end
+    end,
+})
+local Player = game.Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local infJump
+local infJumpDebounce = false
+
+local Toggle = Tab:CreateToggle({
+    Name = "Infinity Jump",
+    CurrentValue = false,
+    Flag = "ToggleInfinityJump", -- Pastikan flag ini unik
+    Callback = function(Value)
+        if Value then
+            -- Aktifkan infinity jump
+            if infJump then
+                infJump:Disconnect() -- Putuskan koneksi sebelumnya jika ada
+            end
+            infJumpDebounce = false
+            infJump = UserInputService.JumpRequest:Connect(function()
+                if not infJumpDebounce then
+                    infJumpDebounce = true
+                    Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    wait() -- Menunggu sejenak untuk menghindari spam lompatan
+                    infJumpDebounce = false
+                end
+            end)
+        else
+            -- Nonaktifkan infinity jump
+            if infJump then
+                infJump:Disconnect()
+                infJump = nil
+            end
+        end
+    end,
+})
 local Tab = Window:CreateTab("Misc", 4483362458) -- Title, Image
 local Section = Tab:CreateSection("Another script")
 local Paragraph = Tab:CreateParagraph({Title = "Warning🔴", Content = "Don't Open Dex and infinite yield (RISK) ban"})
