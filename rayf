@@ -443,42 +443,6 @@ local function removeESP(player)
     end
 end
 
--- Fungsi untuk mendapatkan level dari Player.LocalPlayer
-local function getPlayerLevel()
-    local stats = LocalPlayer:FindFirstChild("Stats")
-    if stats then
-        local level = stats:FindFirstChild("Level")
-        if level and level:IsA("NumberValue") then
-            return level.Value -- Kembalikan nilai level
-        end
-    end
-    return nil -- Jika Level tidak ditemukan
-end
-
--- Fungsi untuk toggle ESP berdasarkan level
-local function toggleESP(levelEnabled)
-    local level = getPlayerLevel()
-    if level then
-        if level >= 10 then
-            espEnabled = levelEnabled
-            print("ESP diaktifkan. Level:", level)
-            if espEnabled then
-                for _, player in ipairs(Players:GetPlayers()) do
-                    createESP(player)
-                end
-            else
-                espFolder:ClearAllChildren() -- Hapus semua ESP saat dinonaktifkan
-            end
-        else
-            espEnabled = false
-            print("ESP dinonaktifkan. Level terlalu rendah:", level)
-            espFolder:ClearAllChildren() -- Hapus semua ESP jika level terlalu rendah
-        end
-    else
-        print("Tidak dapat menemukan Level di Player.LocalPlayer.Stats.")
-    end
-end
-
 -- Pantau pemain baru dan tambahkan ESP jika diaktifkan
 Players.PlayerAdded:Connect(function(player)
     if espEnabled then
@@ -505,6 +469,69 @@ Tab:CreateToggle({
         print("ESP Players:", Value)
     end
 })
+
+-- Fungsi untuk memeriksa peran pemain
+local function checkPlayerRole(player)
+    if player:GetAttribute("PlayerRole") == "Neutral" then
+        createESP(player)
+    else
+        removeESP(player)
+    end
+end
+
+-- Toggle untuk mengaktifkan/menonaktifkan ESP
+local ToggleNeutralESP = false -- Default toggle state
+
+local Toggle = Tab:CreateToggle({
+    Name = "Neutral ESP",
+    CurrentValue = false,
+    Flag = "ToggleNeutralESP", -- Pastikan flag ini unik
+    Callback = function(Value)
+        ToggleNeutralESP = Value
+        if Value then
+            -- Aktifkan ESP
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    checkPlayerRole(player)
+                end
+            end
+        else
+            -- Nonaktifkan ESP
+            for _, player in pairs(Players:GetPlayers()) do
+                removeESP(player)
+            end
+        end
+    end,
+})
+
+-- Memantau perubahan PlayerRole
+local function onPlayerRoleChanged(player)
+    if ToggleNeutralESP then
+        checkPlayerRole(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player:GetAttributeChangedSignal("PlayerRole"):Connect(function()
+        onPlayerRoleChanged(player)
+    end)
+    player.CharacterAdded:Connect(function()
+        if ToggleNeutralESP then
+            checkPlayerRole(player)
+        end
+    end)
+end)
+
+for _, player in pairs(Players:GetPlayers()) do
+    player:GetAttributeChangedSignal("PlayerRole"):Connect(function()
+        onPlayerRoleChanged(player)
+    end)
+    player.CharacterAdded:Connect(function()
+        if ToggleNeutralESP then
+            checkPlayerRole(player)
+        end
+    end)
+end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
