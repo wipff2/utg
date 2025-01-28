@@ -43,64 +43,54 @@ local autotagEnabled = false
 local teamCheckEnabled = false
 local legitTagEnabled = false
 
--- Fungsi untuk memeriksa apakah pemain ada dalam folder PlayerHighlights
-local function checkPlayerInHighlights(targetPlayer)
-    -- Cari folder PlayerHighlights di Workspace
+-- Fungsi untuk memeriksa tim pemain berdasarkan folder PlayerHighlights
+local function checkTeam(targetPlayer)
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
     if not playerHighlightsFolder then
-        return false -- Jika folder tidak ditemukan, tidak ada pemain yang boleh di-tag
+        return false
     end
 
-    -- Cek apakah pemain ada dalam folder PlayerHighlights
-    local targetPlayerName = targetPlayer.Name
-    local playerModel = playerHighlightsFolder:FindFirstChild(targetPlayerName)
-    if playerModel then
-        return true -- Jika nama pemain ditemukan di dalam folder PlayerHighlights, izinkan tagging
+    for _, child in pairs(playerHighlightsFolder:GetChildren()) do
+        if child:IsA("Model") and child.Name == targetPlayer.Name then
+            return true
+        end
     end
 
-    return false -- Jika nama pemain tidak ditemukan, jangan izinkan tagging
+    return false
 end
 
+-- Fungsi untuk mendapatkan pemain terdekat tanpa raycast
 local function getClosestPlayer()
-      local closestPlayer = nil
-      local shortestDistance = math.huge
-      local maxDistance = 7 -- Jarak maksimum yang diizinkan untuk tagging
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local maxDistance = legitTagEnabled and 5 or 6 -- Jarak maksimum berdasarkan Legit Tag
 
-      -- Dapatkan posisi karakter saya
-      local localCharacter = LocalPlayer.Character
-      if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then
-          return nil
-      end
-      local localPosition = localCharacter.HumanoidRootPart.Position
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then
+        return nil
+    end
+    local localPosition = localCharacter.HumanoidRootPart.Position
 
-      -- Loop melalui semua pemain
-      for _, targetPlayer in pairs(Players:GetPlayers()) do
-          if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-              -- Cek apakah pemain target memiliki PlayerRole "Dead"
-              local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
-              if targetPlayerRole and targetPlayerRole.Value == "Dead" then
-                  continue -- Lewati pemain dengan PlayerRole "Dead"
-              end
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        -- Pengecualian untuk LocalPlayer atau karakter saya
+        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
+            if targetPlayerRole and targetPlayerRole.Value == "Dead" then
+                continue -- Lewati pemain dengan PlayerRole "Dead"
+            end
 
-              -- Cek tim jika teamCheckEnabled aktif
-              if teamCheckEnabled then
-                  local localPlayerTeam = LocalPlayer.Team
-                  local targetPlayerTeam = targetPlayer.Team
-                  if localPlayerTeam == targetPlayerTeam then
-                      continue -- Lewati pemain dalam tim yang sama
-                  end
-              end
+            local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+            local distance = (localPosition - targetPosition).Magnitude
 
-              -- Dapatkan posisi pemain target
-              local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
-              local distance = (localPosition - targetPosition).Magnitude
-
-              -- Hanya pertimbangkan pemain dalam jarak 7 studs
-              if distance <= maxDistance then
-                  -- Jika pemain dalam jangkauan, lakukan raycast
-                  local raycastParams = RaycastParams.new()
-                  raycastParams.FilterDescendantsInstances = {localCharacter, targetPlayer.Character}
-                  raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+            if distance <= maxDistance then
+                -- Jika Team Check aktif, periksa tim pemain
+                if not teamCheckEnabled or checkTeam(targetPlayer) then
+                    closestPlayer = targetPlayer
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
 
                   local raycastResult = workspace:Raycast(localPosition, (targetPosition - localPosition).Unit * maxDistance, raycastParams)
                   if raycastResult and raycastResult.Instance:IsDescendantOf(targetPlayer.Character) then
@@ -121,43 +111,16 @@ local function getClosestPlayer()
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
-        -- Panggil checkPlayerInHighlights untuk memastikan pengecekan terbaru
-        if checkPlayerInHighlights(closestPlayer) then
-            -- Buat args sesuai contoh yang diberikan
-            local args = {
-                [1] = closestPlayer.Character.Humanoid, -- Humanoid pemain terdekat
-                [2] = closestPlayer.Character.HumanoidRootPart.Position -- Posisi pemain terdekat
-            }
+        local args = {
+            [1] = closestPlayer.Character.Humanoid,
+            [2] = closestPlayer.Character.HumanoidRootPart.Position
+        }
 
-            -- Fire tag pemain terdekat
-            ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
-        else
-            warn("Player is not a valid target for tagging.")
-        end
-    else
-        warn("No valid player found to tag.")
+        -- Fire tag pemain terdekat
+        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+        print("Tagged:", closestPlayer.Name)
     end
 end
-
--- Fungsi untuk memantau perubahan pada PlayerHighlights
-local function monitorPlayerHighlights()
-    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
-    if playerHighlightsFolder then
-        -- Pantau perubahan pada PlayerHighlights
-        playerHighlightsFolder.ChildAdded:Connect(function(child)
-            print("Player added to PlayerHighlights folder:", child.Name)
-            -- Lakukan pengecekan ulang atau tindakan lain
-        end)
-
-        playerHighlightsFolder.ChildRemoved:Connect(function(child)
-            print("Player removed from PlayerHighlights folder:", child.Name)
-            -- Lakukan pengecekan ulang atau tindakan lain
-        end)
-    end
-end
-
--- Mulai pemantauan PlayerHighlights
-monitorPlayerHighlights()
 
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
@@ -194,9 +157,6 @@ local Toggle1 = Tab:CreateToggle({
                     task.wait(waitTime)
                 end
             end)
-        else
-            -- Hentikan semua pemantauan dan loop auto tag
-            -- (Tidak perlu melakukan apa-apa karena semua fungsi sudah memiliki pengecekan autotagEnabled)
         end
     end
 })
@@ -208,6 +168,7 @@ local Toggle2 = Tab:CreateToggle({
     Flag = "TeamCheckToggle",
     Callback = function(Value)
         teamCheckEnabled = Value
+        print("Team Check is now:", Value and "Enabled" or "Disabled")
     end
 })
 
@@ -218,6 +179,7 @@ local Toggle3 = Tab:CreateToggle({
     Flag = "LegitTagToggle",
     Callback = function(Value)
         legitTagEnabled = Value
+        print("Legit Tag is now:", Value and "Enabled" or "Disabled")
     end
 })
 
