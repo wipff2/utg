@@ -38,43 +38,49 @@ local Section = Tab:CreateSection("auto")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local autotagEnabled = false
 local teamCheckEnabled = false
 local legitTagEnabled = false
 
 -- Fungsi untuk memeriksa tim pemain
-local function checkTeam(localPlayer, targetPlayer)
+local function checkTeam(targetPlayer)
     -- Cari folder PlayerHighlights di Workspace
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
     if not playerHighlightsFolder then
         return false -- Jika folder tidak ditemukan, tidak ada pemain yang boleh di-tag
     end
 
-    -- Cari nama pemain di dalam folder PlayerHighlights
+    -- Cari folder Runner di dalam PlayerHighlights
+    local runnerFolder = playerHighlightsFolder:FindFirstChild("Runner")
+    if not runnerFolder then
+        return false -- Jika folder Runner tidak ditemukan, tidak ada pemain yang boleh di-tag
+    end
+
+    -- Cari nama pemain di dalam folder Runner
     local targetPlayerName = targetPlayer.Name
-    for _, roleFolder in pairs(playerHighlightsFolder:GetChildren()) do
-        if roleFolder:IsA("Folder") then -- Pastikan ini adalah folder role (misalnya "Runner")
-            local playerModel = roleFolder:FindFirstChild(targetPlayerName)
-            if playerModel then
-                return true -- Jika nama pemain ditemukan di dalam folder role, izinkan tagging
-            end
-        end
+    local playerModel = runnerFolder:FindFirstChild(targetPlayerName)
+    if playerModel then
+        return true -- Jika nama pemain ditemukan di dalam folder Runner, izinkan tagging
     end
 
     return false -- Jika nama pemain tidak ditemukan, jangan izinkan tagging
 end
 
--- Fungsi untuk mendapatkan pemain terdekat
+-- Fungsi untuk mendapatkan pemain terdekat dengan raycast
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
-    local maxDistance = legitTagEnabled and 5 or 6 -- Jika Legit Tag aktif, jarak maksimum 7; jika tidak, 9
+    local maxDistance = legitTagEnabled and 5 or 6 -- Jika Legit Tag aktif, jarak maksimum 5; jika tidak, 6
 
-    -- Dapatkan Gamemode dan PlayerRole saya
-    local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
-    local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
-    local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
+    -- Dapatkan posisi karakter saya
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then
+        return nil
+    end
+    local localPosition = localCharacter.HumanoidRootPart.Position
 
+    -- Loop melalui semua pemain
     for _, targetPlayer in pairs(Players:GetPlayers()) do
         if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
             -- Cek apakah pemain target memiliki PlayerRole "Dead"
@@ -83,20 +89,20 @@ local function getClosestPlayer()
                 continue -- Lewati pemain dengan PlayerRole "Dead"
             end
 
+            -- Dapatkan posisi pemain target
             local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
-            local localPosition = LocalPlayer.Character.HumanoidRootPart.Position
             local distance = (localPosition - targetPosition).Magnitude
 
+            -- Jika pemain dalam jangkauan, lakukan raycast
             if distance <= maxDistance then
-                -- Logika baru: Jika saya Dead dan Gamemode adalah Chaos/Crown/SoloCrown, hanya tag pemain dengan role Crown
-                if myPlayerRole == "Dead" and (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
-                    if targetPlayerRole and targetPlayerRole.Value == "Crown" then
-                        closestPlayer = targetPlayer
-                        shortestDistance = distance
-                    end
-                else
-                    -- Logika biasa: Gunakan checkTeam
-                    if checkTeam(LocalPlayer, targetPlayer) then
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterDescendantsInstances = {localCharacter, targetPlayer.Character}
+                raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+                local raycastResult = workspace:Raycast(localPosition, (targetPosition - localPosition).Unit * maxDistance, raycastParams)
+                if raycastResult and raycastResult.Instance:IsDescendantOf(targetPlayer.Character) then
+                    -- Jika raycast mengenai pemain target, periksa tim
+                    if checkTeam(targetPlayer) then
                         closestPlayer = targetPlayer
                         shortestDistance = distance
                     end
@@ -113,7 +119,7 @@ local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
         -- Panggil checkTeam untuk memastikan pengecekan terbaru
-        if checkTeam(LocalPlayer, closestPlayer) then
+        if checkTeam(closestPlayer) then
             -- Buat args sesuai contoh yang diberikan
             local args = {
                 [1] = closestPlayer.Character.Humanoid, -- Humanoid pemain terdekat
@@ -130,55 +136,30 @@ local function autoFireClosestPlayer()
     end
 end
 
-local function monitorPlayerRole(targetPlayer)
-    if not autotagEnabled then return end -- Hanya jalankan jika autotagEnabled aktif
-
-    local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
-    if targetPlayerRole then
-        targetPlayerRole:GetPropertyChangedSignal("Value"):Connect(function()
-            print("PlayerRole changed for:", targetPlayer.Name, "New role:", targetPlayerRole.Value)
-            -- Lakukan pengecekan ulang atau tindakan lain
-        end)
-    end
-end
-
+-- Fungsi untuk memantau perubahan pada PlayerHighlights
 local function monitorPlayerHighlights()
-    if not autotagEnabled then return end -- Hanya jalankan jika autotagEnabled aktif
-
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
     if playerHighlightsFolder then
-        playerHighlightsFolder.ChildAdded:Connect(function(child)
-            -- Lakukan pengecekan ulang atau tindakan lain
-        end)
+        -- Pantau perubahan pada folder Runner
+        local runnerFolder = playerHighlightsFolder:FindFirstChild("Runner")
+        if runnerFolder then
+            runnerFolder.ChildAdded:Connect(function(child)
+                print("Player added to Runner folder:", child.Name)
+                -- Lakukan pengecekan ulang atau tindakan lain
+            end)
 
-        playerHighlightsFolder.ChildRemoved:Connect(function(child)
-            -- Lakukan pengecekan ulang atau tindakan lain
-        end)
+            runnerFolder.ChildRemoved:Connect(function(child)
+                print("Player removed from Runner folder:", child.Name)
+                -- Lakukan pengecekan ulang atau tindakan lain
+            end)
+        end
     end
 end
 
--- Pantau perubahan pada PlayerRole untuk semua pemain
-for _, player in pairs(Players:GetPlayers()) do
-    if autotagEnabled then
-        monitorPlayerRole(player)
-    end
-end
-
--- Pantau pemain baru yang bergabung
-Players.PlayerAdded:Connect(function(player)
-    if autotagEnabled then
-        monitorPlayerRole(player)
-    end
-end)
-
--- Pantau perubahan pada PlayerHighlights
-if autotagEnabled then
-    monitorPlayerHighlights()
-end
-
--- Pantau perubahan pada PlayerHighlights
+-- Mulai pemantauan PlayerHighlights
 monitorPlayerHighlights()
 
+-- Toggle untuk mengaktifkan/menonaktifkan auto tag
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
     CurrentValue = false,
@@ -186,14 +167,6 @@ local Toggle1 = Tab:CreateToggle({
     Callback = function(Value)
         autotagEnabled = Value
         if Value then
-            -- Mulai pemantauan PlayerRole untuk semua pemain yang sudah ada
-            for _, player in pairs(Players:GetPlayers()) do
-                monitorPlayerRole(player)
-            end
-
-            -- Mulai pemantauan PlayerHighlights
-            monitorPlayerHighlights()
-
             -- Mulai loop auto tag
             task.spawn(function()
                 while autotagEnabled do
