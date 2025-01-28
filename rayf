@@ -175,6 +175,12 @@ local Toggle1 = Tab:CreateToggle({
                     local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
                     local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
+                    -- Jika Gamemode adalah Voting/Votings/Intermission, hentikan auto tag sementara
+                    if gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission" then
+                        task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
+                        continue
+                    end
+
                     -- Logika baru: Jika Gamemode bukan Chaos/Crown/SoloCrown dan saya Dead, hentikan tagging
                     if myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
                         task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
