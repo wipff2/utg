@@ -59,11 +59,11 @@ local function checkTeam(targetPlayer)
     return false
 end
 
--- Fungsi untuk mendapatkan pemain terdekat tanpa raycast
+-- Fungsi untuk mendapatkan pemain terdekat
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
-    local maxDistance = legitTagEnabled and 5 or 6 -- Jarak maksimum berdasarkan Legit Tag
+    local maxDistance = legitTagEnabled and 7 or 9 -- Jarak maksimum berdasarkan Legit Tag
 
     local localCharacter = LocalPlayer.Character
     if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then
@@ -73,55 +73,47 @@ local function getClosestPlayer()
 
     for _, targetPlayer in pairs(Players:GetPlayers()) do
         -- Pengecualian untuk LocalPlayer atau karakter saya
-        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        if targetPlayer == LocalPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            -- Lewati iterasi ini jika kondisi tidak terpenuhi
+        else
             local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
             if targetPlayerRole and targetPlayerRole.Value == "Dead" then
-                continue -- Lewati pemain dengan PlayerRole "Dead"
-            end
+                -- Lewati pemain dengan PlayerRole "Dead"
+            else
+                local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+                local distance = (localPosition - targetPosition).Magnitude
 
-            local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
-            local distance = (localPosition - targetPosition).Magnitude
-
-            if distance <= maxDistance then
-                -- Jika Team Check aktif, periksa tim pemain
-                if not teamCheckEnabled or checkTeam(targetPlayer) then
-                    closestPlayer = targetPlayer
-                    shortestDistance = distance
+                if distance <= maxDistance then
+                    -- Jika Team Check aktif, periksa tim pemain
+                    if not teamCheckEnabled or checkTeam(targetPlayer) then
+                        closestPlayer = targetPlayer
+                        shortestDistance = distance
+                    end
                 end
             end
         end
     end
 
-                  local raycastResult = workspace:Raycast(localPosition, (targetPosition - localPosition).Unit * maxDistance, raycastParams)
-                  if raycastResult and raycastResult.Instance:IsDescendantOf(targetPlayer.Character) then
-                      -- Jika raycast mengenai pemain target, periksa keberadaan pemain dalam PlayerHighlights
-                      if checkPlayerInHighlights(targetPlayer) then
-                          closestPlayer = targetPlayer
-                          shortestDistance = distance
-                      end
-                  end
-              end
-          end
-      end
-
-      return closestPlayer
-  end
+    return closestPlayer
+end
 
 -- Fungsi untuk melakukan fire langsung ke pemain terdekat
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
         local args = {
-            [1] = closestPlayer.Character.Humanoid,
-            [2] = closestPlayer.Character.HumanoidRootPart.Position
+            [1] = closestPlayer.Character.Humanoid, -- Humanoid pemain terdekat
+            [2] = closestPlayer.Character.HumanoidRootPart.Position -- Posisi pemain terdekat
         }
 
         -- Fire tag pemain terdekat
         ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
         print("Tagged:", closestPlayer.Name)
+        wait()
     end
 end
 
+-- Toggle Auto Tag
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
     CurrentValue = false,
@@ -140,21 +132,19 @@ local Toggle1 = Tab:CreateToggle({
                     -- Jika Gamemode adalah Voting/Votings/Intermission, hentikan auto tag sementara
                     if gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission" then
                         task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
-                        continue
+                    else
+                        -- Logika baru: Jika Gamemode bukan Chaos/Crown/SoloCrown dan saya Dead, hentikan tagging
+                        if myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
+                            task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
+                        else
+                            -- Fire pemain terdekat langsung
+                            autoFireClosestPlayer()
+
+                            -- Tunggu sedikit untuk menghindari overload server
+                            local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
+                            task.wait(waitTime)
+                        end
                     end
-
-                    -- Logika baru: Jika Gamemode bukan Chaos/Crown/SoloCrown dan saya Dead, hentikan tagging
-                    if myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
-                        task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
-                        continue
-                    end
-
-                    -- Fire pemain terdekat langsung
-                    autoFireClosestPlayer()
-
-                    -- Tunggu sedikit untuk menghindari overload server
-                    local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
-                    task.wait(waitTime)
                 end
             end)
         end
@@ -173,7 +163,7 @@ local Toggle2 = Tab:CreateToggle({
 })
 
 -- Toggle Legit Tag
-local Toggle3 = Tab:CreateToggle({
+local Toggle11 = Tab:CreateToggle({
     Name = "Legit tag",
     CurrentValue = false,
     Flag = "LegitTagToggle",
