@@ -61,53 +61,61 @@ local function checkPlayerInHighlights(targetPlayer)
     return false -- Jika nama pemain tidak ditemukan, jangan izinkan tagging
 end
 
--- Fungsi untuk mendapatkan pemain terdekat dengan raycast dan jarak 7 studs
 local function getClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = math.huge
-    local maxDistance = 7 -- Jarak maksimum yang diizinkan untuk tagging
+      local closestPlayer = nil
+      local shortestDistance = math.huge
+      local maxDistance = 7 -- Jarak maksimum yang diizinkan untuk tagging
 
-    -- Dapatkan posisi karakter saya
-    local localCharacter = LocalPlayer.Character
-    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then
-        return nil
-    end
-    local localPosition = localCharacter.HumanoidRootPart.Position
+      -- Dapatkan posisi karakter saya
+      local localCharacter = LocalPlayer.Character
+      if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then
+          return nil
+      end
+      local localPosition = localCharacter.HumanoidRootPart.Position
 
-    -- Loop melalui semua pemain
-    for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            -- Cek apakah pemain target memiliki PlayerRole "Dead"
-            local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
-            if targetPlayerRole and targetPlayerRole.Value == "Dead" then
-                continue -- Lewati pemain dengan PlayerRole "Dead"
-            end
+      -- Loop melalui semua pemain
+      for _, targetPlayer in pairs(Players:GetPlayers()) do
+          if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+              -- Cek apakah pemain target memiliki PlayerRole "Dead"
+              local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
+              if targetPlayerRole and targetPlayerRole.Value == "Dead" then
+                  continue -- Lewati pemain dengan PlayerRole "Dead"
+              end
 
-            -- Dapatkan posisi pemain target
-            local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
-            local distance = (localPosition - targetPosition).Magnitude
+              -- Cek tim jika teamCheckEnabled aktif
+              if teamCheckEnabled then
+                  local localPlayerTeam = LocalPlayer.Team
+                  local targetPlayerTeam = targetPlayer.Team
+                  if localPlayerTeam == targetPlayerTeam then
+                      continue -- Lewati pemain dalam tim yang sama
+                  end
+              end
 
-            -- Hanya pertimbangkan pemain dalam jarak 7 studs
-            if distance <= maxDistance then
-                -- Jika pemain dalam jangkauan, lakukan raycast
-                local raycastParams = RaycastParams.new()
-                raycastParams.FilterDescendantsInstances = {localCharacter, targetPlayer.Character}
-                raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+              -- Dapatkan posisi pemain target
+              local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+              local distance = (localPosition - targetPosition).Magnitude
 
-                local raycastResult = workspace:Raycast(localPosition, (targetPosition - localPosition).Unit * maxDistance, raycastParams)
-                if raycastResult and raycastResult.Instance:IsDescendantOf(targetPlayer.Character) then
-                    -- Jika raycast mengenai pemain target, periksa keberadaan pemain dalam PlayerHighlights
-                    if checkPlayerInHighlights(targetPlayer) then
-                        closestPlayer = targetPlayer
-                        shortestDistance = distance
-                    end
-                end
-            end
-        end
-    end
+              -- Hanya pertimbangkan pemain dalam jarak 7 studs
+              if distance <= maxDistance then
+                  -- Jika pemain dalam jangkauan, lakukan raycast
+                  local raycastParams = RaycastParams.new()
+                  raycastParams.FilterDescendantsInstances = {localCharacter, targetPlayer.Character}
+                  raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
-    return closestPlayer
-end
+                  local raycastResult = workspace:Raycast(localPosition, (targetPosition - localPosition).Unit * maxDistance, raycastParams)
+                  if raycastResult and raycastResult.Instance:IsDescendantOf(targetPlayer.Character) then
+                      -- Jika raycast mengenai pemain target, periksa keberadaan pemain dalam PlayerHighlights
+                      if checkPlayerInHighlights(targetPlayer) then
+                          closestPlayer = targetPlayer
+                          shortestDistance = distance
+                      end
+                  end
+              end
+          end
+      end
+
+      return closestPlayer
+  end
 
 -- Fungsi untuk melakukan fire langsung ke pemain terdekat
 local function autoFireClosestPlayer()
@@ -151,7 +159,6 @@ end
 -- Mulai pemantauan PlayerHighlights
 monitorPlayerHighlights()
 
--- Toggle untuk mengaktifkan/menonaktifkan auto tag
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
     CurrentValue = false,
