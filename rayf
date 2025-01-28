@@ -39,24 +39,56 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local trackedTeams = {}
 local autotagEnabled = false
 local teamCheckEnabled = false
 local legitTagEnabled = false
 
--- Fungsi untuk memeriksa tim pemain berdasarkan folder PlayerHighlights
-local function checkTeam(targetPlayer)
+-- Fungsi untuk memperbarui data tim berdasarkan folder PlayerHighlights
+local function updateTrackedTeams()
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
-    if not playerHighlightsFolder then
-        return false
-    end
+    if playerHighlightsFolder then
+        -- Reset data tim
+        trackedTeams = {}
 
-    for _, child in pairs(playerHighlightsFolder:GetChildren()) do
-        if child:IsA("Model") and child.Name == targetPlayer.Name then
-            return true
+        -- Tambahkan semua pemain di folder ke tabel trackedTeams
+        for _, child in pairs(playerHighlightsFolder:GetChildren()) do
+            if child:IsA("Model") then
+                trackedTeams[child.Name] = true
+            end
         end
-    end
 
-    return false
+        -- Pantau penambahan pemain baru ke folder
+        playerHighlightsFolder.ChildAdded:Connect(function(child)
+            if child:IsA("Model") then
+                trackedTeams[child.Name] = true
+            end
+        end)
+
+        -- Pantau penghapusan pemain dari folder
+        playerHighlightsFolder.ChildRemoved:Connect(function(child)
+            if child:IsA("Model") then
+                trackedTeams[child.Name] = nil
+            end
+        end)
+    end
+end
+
+-- Jalankan pembaruan awal jika folder PlayerHighlights sudah ada
+if workspace:FindFirstChild("PlayerHighlights") then
+    updateTrackedTeams()
+end
+
+-- Pantau jika folder PlayerHighlights muncul setelah game dimulai
+workspace.ChildAdded:Connect(function(child)
+    if child.Name == "PlayerHighlights" and child:IsA("Folder") then
+        updateTrackedTeams()
+    end
+end)
+
+-- Fungsi untuk memeriksa tim pemain berdasarkan trackedTeams
+local function checkTeam(targetPlayer)
+    return trackedTeams[targetPlayer.Name] or false
 end
 
 -- Fungsi untuk mendapatkan pemain terdekat
@@ -72,19 +104,13 @@ local function getClosestPlayer()
     local localPosition = localCharacter.HumanoidRootPart.Position
 
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        -- Pengecualian untuk LocalPlayer atau karakter saya
-        if targetPlayer == LocalPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            -- Lewati iterasi ini jika kondisi tidak terpenuhi
-        else
+        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
-            if targetPlayerRole and targetPlayerRole.Value == "Dead" then
-                -- Lewati pemain dengan PlayerRole "Dead"
-            else
+            if not (targetPlayerRole and targetPlayerRole.Value == "Dead") then
                 local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
                 local distance = (localPosition - targetPosition).Magnitude
 
                 if distance <= maxDistance then
-                    -- Jika Team Check aktif, periksa tim pemain
                     if not teamCheckEnabled or checkTeam(targetPlayer) then
                         closestPlayer = targetPlayer
                         shortestDistance = distance
@@ -102,8 +128,8 @@ local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
         local args = {
-            [1] = closestPlayer.Character.Humanoid, -- Humanoid pemain terdekat
-            [2] = closestPlayer.Character.HumanoidRootPart.Position -- Posisi pemain terdekat
+            [1] = closestPlayer.Character.Humanoid,
+            [2] = closestPlayer.Character.HumanoidRootPart.Position
         }
 
         -- Fire tag pemain terdekat
@@ -121,26 +147,19 @@ local Toggle1 = Tab:CreateToggle({
     Callback = function(Value)
         autotagEnabled = Value
         if Value then
-            -- Mulai loop auto tag
             task.spawn(function()
                 while autotagEnabled do
-                    -- Cek Gamemode sebelum melakukan tagging
                     local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
                     local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
                     local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
-                    -- Jika Gamemode adalah Voting/Votings/Intermission, hentikan auto tag sementara
                     if gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission" then
-                        task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
+                        task.wait(1)
                     else
-                        -- Logika baru: Jika Gamemode bukan Chaos/Crown/SoloCrown dan saya Dead, hentikan tagging
                         if myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
-                            task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
+                            task.wait(1)
                         else
-                            -- Fire pemain terdekat langsung
                             autoFireClosestPlayer()
-
-                            -- Tunggu sedikit untuk menghindari overload server
                             local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
                             task.wait(waitTime)
                         end
@@ -196,35 +215,19 @@ end
 local function updateHumanoidRootPart(character)
     if not rootSizeEnabled then return end -- Jika toggle false, hentikan fungsi
 
-    if character == LocalPlayer.Character then return end -- Abaikan pemain lokal
-
     local player = Players:GetPlayerFromCharacter(character)
     if not player then return end -- Jika tidak ada pemain, hentikan
 
-    local playerrole = player:FindFirstChild("PlayerRole")
+    local playerRole = player:FindFirstChild("PlayerRole")
     local localRole = LocalPlayer:FindFirstChild("PlayerRole")
 
     -- Abaikan jika noGhostEnabled aktif dan PlayerRole = "Dead"
-    if noGhostEnabled and playerrole and playerrole.Value == "Dead" then
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if rootPart then
-            rootPart.Size = Vector3.new(2, 2, 1) -- Reset ukuran ke default
-            rootPart.Transparency = 0 -- Reset transparansi ke default
-            rootPart.Material = Enum.Material.SmoothPlastic -- Reset material ke default
-            rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
-        end
+    if noGhostEnabled and playerRole and playerRole.Value == "Dead" then
         return
     end
 
     -- Abaikan jika teamCheckEnabled aktif dan PlayerRole sama
-    if teamCheckEnabled and localRole and playerrole and localRole.Value == playerrole.Value then
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if rootPart then
-            rootPart.Size = Vector3.new(2, 2, 1) -- Reset ukuran ke default
-            rootPart.Transparency = 0 -- Reset transparansi ke default
-            rootPart.Material = Enum.Material.SmoothPlastic -- Reset material ke default
-            rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
-        end
+    if teamCheckEnabled and localRole and playerRole and localRole.Value == playerRole.Value then
         return
     end
 
@@ -235,29 +238,46 @@ local function updateHumanoidRootPart(character)
         rootPart.Material = humanoidRootPartMaterial -- Terapkan material
 
         -- Terapkan warna pelangi jika PlayerRole adalah "Neutral"
-        if rainbowEnabled and playerrole and playerrole.Value == "Neutral" then
+        if rainbowEnabled and playerRole and playerRole.Value == "Neutral" then
             task.spawn(function()
-                while rootSizeEnabled and playerrole.Value == "Neutral" do
+                while rootSizeEnabled and playerRole.Value == "Neutral" do
                     rootPart.Color = getRainbowColor() -- Terapkan warna pelangi
                     task.wait(0.1) -- Perbarui warna setiap 0.1 detik
                 end
             end)
+        else
+            rootPart.Color = Color3.new(1, 1, 1) -- Reset ke warna putih
         end
     end
 end
 
--- Function untuk memantau perubahan pada PlayerRole
+-- Function untuk menghapus hitbox dari karakter
+local function removeHitbox(character)
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        rootPart.Size = Vector3.new(2, 2, 1) -- Reset ukuran ke default
+        rootPart.Transparency = 0 -- Reset transparansi ke default
+        rootPart.Material = Enum.Material.SmoothPlastic -- Reset material ke default
+        rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
+    end
+end
+
+-- Function untuk memantau perubahan PlayerRole
 local function monitorPlayerRole(player)
     if player == LocalPlayer then return end -- Abaikan pemain lokal
 
-    -- Function untuk menangani perubahan PlayerRole
     local function onRoleChanged()
         if player.Character then
-            updateHumanoidRootPart(player.Character) -- Perbarui hitbox saat PlayerRole berubah
+            local playerRole = player:FindFirstChild("PlayerRole")
+            if playerRole and playerRole.Value == "Dead" or (teamCheckEnabled and LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value == playerRole.Value) then
+                removeHitbox(player.Character) -- Hapus hitbox jika kondisi terpenuhi
+            else
+                updateHumanoidRootPart(player.Character) -- Perbarui hitbox jika kondisi tidak terpenuhi
+            end
         end
     end
 
-    -- Pantau jika PlayerRole sudah ada
+    -- Pantau perubahan nilai PlayerRole
     local playerRole = player:FindFirstChild("PlayerRole")
     if playerRole then
         playerRole:GetPropertyChangedSignal("Value"):Connect(onRoleChanged)
@@ -279,10 +299,9 @@ local function onCharacterAdded(character)
     character:WaitForChild("Humanoid") -- Tunggu hingga karakter sepenuhnya dimuat
     updateHumanoidRootPart(character) -- Terapkan pengaturan awal
 
-    -- Hubungkan ke PlayerRole jika belum dilakukan
     local player = Players:GetPlayerFromCharacter(character)
     if player then
-        monitorPlayerRole(player)
+        monitorPlayerRole(player) -- Pantau perubahan PlayerRole pemain
     end
 end
 
@@ -305,20 +324,13 @@ for _, player in ipairs(Players:GetPlayers()) do
     end
 end
 
--- Pantau pemain yang baru masuk
 Players.PlayerAdded:Connect(onPlayerAdded)
 
--- Function untuk mengatur ulang semua HumanoidRootPart saat toggle dinonaktifkan
+-- Reset semua hitbox saat toggle dinonaktifkan
 local function resetRootParts()
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                rootPart.Size = Vector3.new(2, 2, 1)
-                rootPart.Transparency = 0 -- Reset transparansi ke default
-                rootPart.Material = Enum.Material.SmoothPlastic
-                rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
-            end
+        if player.Character and player ~= LocalPlayer then
+            removeHitbox(player.Character)
         end
     end
 end
@@ -337,16 +349,7 @@ local function toggleRootSize(value)
     end
 end
 
--- Function untuk memperbarui semua hitbox saat noGhostEnabled atau teamCheckEnabled berubah
-local function updateAllHitboxes()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character and player ~= LocalPlayer then
-            updateHumanoidRootPart(player.Character)
-        end
-    end
-end
-
--- Toggle rootSizeEnabled
+-- GUI Toggles
 local Toggle = Tab:CreateToggle({
     Name = "Enable Hitbox",
     CurrentValue = false,
@@ -359,7 +362,7 @@ local Toggle = Tab:CreateToggle({
 -- Slider untuk mengatur ukuran hitbox
 local Slider = Tab:CreateSlider({
     Name = "Size",
-    Range = {3, 20},
+    Range = {3, 15},
     Increment = 0.5,
     CurrentValue = 2,
     Flag = "SizeSlider",
