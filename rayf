@@ -39,63 +39,55 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local trackedTeams = {}
 local autotagEnabled = false
 local teamCheckEnabled = false
 local legitTagEnabled = false
 
--- Fungsi untuk memperbarui data tim berdasarkan folder PlayerHighlights
-local function updateTrackedTeams()
+-- Daftar nama pemain yang boleh ditag (diperbarui secara dinamis)
+local allowedPlayers = {}
+
+-- Fungsi untuk memeriksa folder dan memperbarui daftar pemain yang boleh ditag
+local function updateAllowedPlayers()
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
-    if playerHighlightsFolder then
-        -- Reset data tim
-        trackedTeams = {}
+    if not playerHighlightsFolder then
+        allowedPlayers = {} -- Reset jika folder tidak ditemukan
+        return
+    end
 
-        -- Tambahkan semua pemain di folder ke tabel trackedTeams
-        for _, child in pairs(playerHighlightsFolder:GetChildren()) do
-            if child:IsA("Model") then
-                trackedTeams[child.Name] = true
-            end
+    -- Bersihkan daftar sebelumnya
+    allowedPlayers = {}
+
+    -- Periksa semua children di folder PlayerHighlights
+    for _, child in pairs(playerHighlightsFolder:GetChildren()) do
+        if child:IsA("Model") and Players:FindFirstChild(child.Name) then
+            table.insert(allowedPlayers, child.Name) -- Tambahkan nama pemain yang boleh ditag
         end
-
-        -- Pantau penambahan pemain baru ke folder
-        playerHighlightsFolder.ChildAdded:Connect(function(child)
-            if child:IsA("Model") then
-                trackedTeams[child.Name] = true
-            end
-        end)
-
-        -- Pantau penghapusan pemain dari folder
-        playerHighlightsFolder.ChildRemoved:Connect(function(child)
-            if child:IsA("Model") then
-                trackedTeams[child.Name] = nil
-            end
-        end)
     end
 end
 
--- Jalankan pembaruan awal jika folder PlayerHighlights sudah ada
-if workspace:FindFirstChild("PlayerHighlights") then
-    updateTrackedTeams()
-end
-
--- Pantau jika folder PlayerHighlights muncul setelah game dimulai
-workspace.ChildAdded:Connect(function(child)
-    if child.Name == "PlayerHighlights" and child:IsA("Folder") then
-        updateTrackedTeams()
+-- Loop untuk memeriksa folder secara terus-menerus
+task.spawn(function()
+    while true do
+        updateAllowedPlayers() -- Perbarui daftar pemain yang boleh ditag
+        task.wait(1) -- Tunggu 1 detik sebelum memeriksa lagi
     end
 end)
 
--- Fungsi untuk memeriksa tim pemain berdasarkan trackedTeams
-local function checkTeam(targetPlayer)
-    return trackedTeams[targetPlayer.Name] or false
+-- Fungsi untuk memeriksa apakah pemain boleh ditag
+local function isPlayerAllowed(targetPlayer)
+    for _, allowedName in pairs(allowedPlayers) do
+        if targetPlayer.Name == allowedName then
+            return true
+        end
+    end
+    return false
 end
 
 -- Fungsi untuk mendapatkan pemain terdekat
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
-    local maxDistance = legitTagEnabled and 7 or 9 -- Jarak maksimum berdasarkan Legit Tag
+    local maxDistance = legitTagEnabled and 5 or 6 -- Jarak maksimum berdasarkan Legit Tag
 
     local localCharacter = LocalPlayer.Character
     if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then
@@ -104,14 +96,20 @@ local function getClosestPlayer()
     local localPosition = localCharacter.HumanoidRootPart.Position
 
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        -- Pengecualian untuk LocalPlayer atau karakter saya
+        if targetPlayer == LocalPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            -- Lewati iterasi ini jika kondisi tidak terpenuhi
+        else
             local targetPlayerRole = targetPlayer:FindFirstChild("PlayerRole")
-            if not (targetPlayerRole and targetPlayerRole.Value == "Dead") then
+            if targetPlayerRole and targetPlayerRole.Value == "Dead" then
+                -- Lewati pemain dengan PlayerRole "Dead"
+            else
                 local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
                 local distance = (localPosition - targetPosition).Magnitude
 
                 if distance <= maxDistance then
-                    if not teamCheckEnabled or checkTeam(targetPlayer) then
+                    -- Jika Team Check aktif, periksa tim pemain
+                    if not teamCheckEnabled or isPlayerAllowed(targetPlayer) then
                         closestPlayer = targetPlayer
                         shortestDistance = distance
                     end
@@ -123,48 +121,51 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Fungsi untuk melakukan fire langsung ke pemain terdekat
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
+        -- Gunakan Vector3 nilai tetap seperti contoh
         local args = {
-            [1] = closestPlayer.Character.Humanoid,
-            [2] = closestPlayer.Character.HumanoidRootPart.Position
+            [1] = closestPlayer.Character.Humanoid, -- Humanoid pemain terdekat
+            [2] = Vector3.new(0.12117216736078262, -0.6929889917373657, -0.7106921672821045) -- Vector3 tetap
         }
 
-        -- Ubah argumen kedua jika Legit Tag diaktifkan
-        if legitTagEnabled then
-            args[2] = Vector3.new(0.12117216736078262, -0.6929889917373657, -0.7106921672821045) -- Nilai Vector3 yang diinginkan
-        end
-
         -- Fire tag pemain terdekat
-        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+        game:GetService("ReplicatedStorage").Events.game.tags.TagPlayer:InvokeServer(unpack(args))
         print("Tagged:", closestPlayer.Name)
-        wait()
+    else
+        warn("No valid player found to tag.")
     end
 end
 
 -- Toggle Auto Tag
-local Toggle1 = Tab:CreateToggle({
+local Toggle1 = {
     Name = "Auto tag",
     CurrentValue = false,
     Flag = "AutoTagToggle",
     Callback = function(Value)
         autotagEnabled = Value
         if Value then
+            -- Mulai loop auto tag
             task.spawn(function()
                 while autotagEnabled do
+                    -- Cek Gamemode sebelum melakukan tagging
                     local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
                     local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
                     local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
+                    -- Jika Gamemode adalah Voting/Votings/Intermission, hentikan auto tag sementara
                     if gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission" then
-                        task.wait(1)
+                        task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
                     else
+                        -- Logika baru: Jika Gamemode bukan Chaos/Crown/SoloCrown dan saya Dead, hentikan tagging
                         if myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
-                            task.wait(1)
+                            task.wait(1) -- Tunggu 1 detik dan lanjutkan loop
                         else
+                            -- Fire pemain terdekat langsung
                             autoFireClosestPlayer()
+
+                            -- Tunggu sedikit untuk menghindari overload server
                             local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
                             task.wait(waitTime)
                         end
@@ -173,8 +174,29 @@ local Toggle1 = Tab:CreateToggle({
             end)
         end
     end
-})
+}
 
+-- Toggle Team Check
+local Toggle2 = {
+    Name = "Team check",
+    CurrentValue = false,
+    Flag = "TeamCheckToggle",
+    Callback = function(Value)
+        teamCheckEnabled = Value
+        print("Team Check is now:", Value and "Enabled" or "Disabled")
+    end
+}
+
+-- Toggle Legit Tag
+local Toggle3 = {
+    Name = "Legit tag",
+    CurrentValue = false,
+    Flag = "LegitTagToggle",
+    Callback = function(Value)
+        legitTagEnabled = Value
+        print("Legit Tag is now:", Value and "Enabled" or "Disabled")
+    end
+}
 -- Toggle Team Check
 local Toggle2 = Tab:CreateToggle({
     Name = "Team check",
