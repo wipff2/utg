@@ -1,7 +1,7 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "utg Deepmarian hb",
-   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   Icon = anchor, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
    LoadingTitle = "Rayfield Interface Suite",
    LoadingSubtitle = "by Annonmy",
    Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
@@ -218,6 +218,8 @@ local Toggle11 = Tab:CreateToggle({
         print("Legit Tag is now:", Value and "Enabled" or "Disabled")
     end
 })
+local Section = Tab:CreateSection("Mode tag")
+-- fast tag toggle
 
 local Section = Tab:CreateSection("Hitbox")
 local Players = game:GetService("Players")
