@@ -197,27 +197,6 @@ local Toggle3 = {
         print("Legit Tag is now:", Value and "Enabled" or "Disabled")
     end
 }
--- Toggle Team Check
-local Toggle2 = Tab:CreateToggle({
-    Name = "Team check",
-    CurrentValue = false,
-    Flag = "TeamCheckToggle",
-    Callback = function(Value)
-        teamCheckEnabled = Value
-        print("Team Check is now:", Value and "Enabled" or "Disabled")
-    end
-})
-
--- Toggle Legit Tag
-local Toggle11 = Tab:CreateToggle({
-    Name = "Legit tag",
-    CurrentValue = false,
-    Flag = "LegitTagToggle",
-    Callback = function(Value)
-        legitTagEnabled = Value
-        print("Legit Tag is now:", Value and "Enabled" or "Disabled")
-    end
-})
 local Section = Tab:CreateSection("Mode tag")
 -- fast tag toggle
 
