@@ -1,32 +1,28 @@
--- Script Anti Cooldown (Cooldown diatur ke 0.6)
+-- Script Anti Cooldown
 local mt = getrawmetatable(game) -- Mengambil metatable game
 setreadonly(mt, false) -- Membuat metatable bisa dimodifikasi
 local oldIndex = mt.__index -- Menyimpan fungsi asli __index
 
--- Menimpa fungsi __index untuk mengatur cooldown ke 0.6
+-- Menimpa fungsi __index untuk mencegah cooldown diterapkan
 mt.__index = function(self, key)
     if tostring(self) == "shared" and key == "cooldowns" then
-        -- Mengatur semua cooldown ke 0.6
-        return setmetatable({}, {
-            __index = function(_, k)
-                return 0.6 -- Cooldown default menjadi 0.6
-            end
-        })
+        -- Menonaktifkan semua cooldown
+        return {}
     elseif tostring(self) == "shared" and key == "multipliers" then
-        -- Memastikan multipliers tidak memiliki cooldown lebih tinggi dari 0.6
-        return setmetatable({ DisableTagging = false, TagCooldown = 0.6, EnableParrying = true }, {
+        -- Memastikan multipliers tidak memiliki cooldown
+        return setmetatable({ DisableTagging = false, TagCooldown = 0, EnableParrying = true }, {
             __index = function(_, k)
-                return rawget(_, k) or 0.6 -- Cooldown default menjadi 0.6
+                return rawget(_, k) or 0 -- Default 0 untuk nilai cooldown
             end
         })
     end
     return oldIndex(self, key)
 end
 
--- Mengatur cooldown fungsi `InCooldown` menjadi 0.6 jika dipanggil
+-- Menghapus cooldown dari fungsi `InCooldown` jika dipanggil
 hookfunction(require(game.ReplicatedFirst.Utils).InCooldown, function(action)
-    return 0.6 -- Mengembalikan cooldown menjadi 0.6
+    return false -- Mengembalikan false agar cooldown tidak aktif
 end)
 
 -- Menampilkan notifikasi
-print("fast tag active")
+print("Anti Cooldown diaktifkan!")
