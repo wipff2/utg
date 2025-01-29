@@ -132,6 +132,11 @@ local function autoFireClosestPlayer()
             [2] = closestPlayer.Character.HumanoidRootPart.Position
         }
 
+        -- Ubah argumen kedua jika Legit Tag diaktifkan
+        if legitTagEnabled then
+            args[2] = Vector3.new(0.12117216736078262, -0.6929889917373657, -0.7106921672821045) -- Nilai Vector3 yang diinginkan
+        end
+
         -- Fire tag pemain terdekat
         ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
         print("Tagged:", closestPlayer.Name)
