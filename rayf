@@ -377,7 +377,13 @@ local function toggleRootSize(value)
         end
     end
 end
-
+local function updateAllHitboxes()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player ~= LocalPlayer then
+            updateHumanoidRootPart(player.Character)
+        end
+    end
+end
 -- GUI Toggles
 local Toggle = Tab:CreateToggle({
     Name = "Enable Hitbox",
