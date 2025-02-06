@@ -47,6 +47,19 @@ local activeTasks = {} -- Menyimpan tugas aktif
 -- Daftar nama pemain yang boleh ditag (diperbarui secara dinamis)
 local allowedPlayers = {}
 
+-- Fungsi untuk memeriksa apakah pemain boleh ditag berdasarkan teamCheckEnabled
+local function isPlayerAllowed(targetPlayer)
+    if not teamCheckEnabled then
+        return true -- Jika team check tidak aktif, semua pemain boleh ditag
+    end
+
+    -- Pastikan kedua pemain memiliki Team
+    if LocalPlayer.Team and targetPlayer.Team then
+        return LocalPlayer.Team ~= targetPlayer.Team -- Hanya tag pemain di tim berbeda
+    end
+    return true
+end
+
 -- Fungsi untuk memperbarui daftar pemain yang boleh ditag
 local function updateAllowedPlayers()
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
@@ -67,28 +80,30 @@ local function monitorPlayerHighlights()
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
     if not playerHighlightsFolder then return end
 
-    playerHighlightsFolder.ChildAdded:Connect(function()
-        updateAllowedPlayers()
-    end)
-    playerHighlightsFolder.ChildRemoved:Connect(function()
-        updateAllowedPlayers()
-    end)
+    playerHighlightsFolder.ChildAdded:Connect(updateAllowedPlayers)
+    playerHighlightsFolder.ChildRemoved:Connect(updateAllowedPlayers)
 end
 
--- Fungsi untuk mendapatkan pemain terdekat
+-- Fungsi untuk mendapatkan pemain terdekat yang boleh ditag
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
-    local maxDistance = legitTagEnabled and 6 or 6
+    local maxDistance = legitTagEnabled and 6 or 6 -- Bisa disesuaikan
+
     local localCharacter = LocalPlayer.Character
     if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return nil end
     local localPosition = localCharacter.HumanoidRootPart.Position
 
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        if targetPlayer ~= LocalPlayer 
+            and targetPlayer.Character 
+            and targetPlayer.Character:FindFirstChild("HumanoidRootPart") 
+            and isPlayerAllowed(targetPlayer) then
+
             local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
             local distance = (localPosition - targetPosition).Magnitude
-            if distance <= maxDistance and (not teamCheckEnabled or isPlayerAllowed(targetPlayer)) then
+
+            if distance <= maxDistance and distance < shortestDistance then
                 closestPlayer = targetPlayer
                 shortestDistance = distance
             end
@@ -97,6 +112,7 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
+-- Fungsi untuk menembak pemain terdekat
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
@@ -109,6 +125,7 @@ local function autoFireClosestPlayer()
     end
 end
 
+-- Fungsi untuk memulai auto tag
 local function startAutoTagging()
     while autotagEnabled do
         local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
@@ -125,13 +142,24 @@ local function startAutoTagging()
         task.wait(1)
 
         -- Cek kondisi untuk mulai auto tag
-        if myPlayerRole ~= "Dead" or (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
+        if myPlayerRole ~= "Dead" and (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
             autoFireClosestPlayer()
             task.wait(legitTagEnabled and math.random(2, 3) * 0.1 or 0.3)
         end
 
         task.wait(1) -- Tunggu sebelum mengulang loop
     end
+end
+
+-- Fungsi untuk menghentikan semua tugas saat toggle dimatikan
+local function stopAllTasks()
+    autotagEnabled = false
+    teamCheckEnabled = false
+    legitTagEnabled = false
+    for _, taskId in pairs(activeTasks) do
+        task.cancel(taskId)
+    end
+    activeTasks = {}
 end
 
 -- Fungsi untuk menghentikan semua tugas saat toggle dimatikan
