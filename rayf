@@ -133,7 +133,8 @@ local function autoFireClosestPlayer()
     end
 end
 
--- Fungsi untuk memulai auto tag
+local taskHandle = nil -- Menyimpan referensi tugas auto-tagging
+
 local function startAutoTagging()
     while autotagEnabled do
         local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
@@ -141,10 +142,13 @@ local function startAutoTagging()
         local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
         -- Jika dalam mode Voting, Votings, atau Intermission, tunggu hingga gamemode berubah
-        while gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission" do
+        while autotagEnabled and (gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission") do
             task.wait(1) -- Tunggu 1 detik sebelum mengecek lagi
             gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
         end
+
+        -- Jika autotagEnabled dimatikan saat menunggu, keluar dari loop
+        if not autotagEnabled then break end
 
         -- Tunggu 1 detik setelah gamemode berubah sebelum melanjutkan tag
         task.wait(1)
@@ -164,21 +168,12 @@ local function stopAllTasks()
     autotagEnabled = false
     teamCheckEnabled = false
     legitTagEnabled = false
-    for _, taskId in pairs(activeTasks) do
-        task.cancel(taskId)
-    end
-    activeTasks = {}
-end
 
--- Fungsi untuk menghentikan semua tugas saat toggle dimatikan
-local function stopAllTasks()
-    autotagEnabled = false
-    teamCheckEnabled = false
-    legitTagEnabled = false
-    for _, taskId in pairs(activeTasks) do
-        task.cancel(taskId)
+    -- Batalkan tugas yang sedang berjalan jika ada
+    if taskHandle then
+        task.cancel(taskHandle)
+        taskHandle = nil
     end
-    activeTasks = {}
 end
 
 -- Toggle Auto Tag
@@ -189,7 +184,13 @@ local Toggle1 = Tab:CreateToggle({
     Callback = function(Value)
         autotagEnabled = Value
         if Value then
-            table.insert(activeTasks, task.spawn(startAutoTagging))
+            -- Hentikan tugas sebelumnya jika masih berjalan
+            if taskHandle then
+                task.cancel(taskHandle)
+            end
+
+            -- Mulai tugas baru dan simpan referensinya
+            taskHandle = task.spawn(startAutoTagging)
             monitorPlayerHighlights() -- Pantau perubahan di folder PlayerHighlights
         else
             stopAllTasks()
