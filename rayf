@@ -212,34 +212,37 @@ local function stopAllTasks()
     isPaused = false
 end
 
--- Fungsi untuk menggambar POV di layar
 local function drawPOV()
     if not showPOV then return end
 
-    local fovAngle = math.rad(30)
-    local fovLines = {}
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) -- Pusat layar
+    local radius = (maxDistance / 100) * Camera.ViewportSize.X -- Radius lingkaran (disesuaikan dengan jarak)
 
-    for i = 1, 2 do
-        local angle = fovAngle * (i == 1 and -1 or 1)
-        local direction = Camera.CFrame.LookVector * math.cos(angle) + Camera.CFrame.RightVector * math.sin(angle)
-        local endPoint = Camera.CFrame.Position + direction * maxDistance
+    local circle = Drawing.new("Circle")
+    circle.Position = center
+    circle.Radius = radius
+    circle.Color = Color3.new(1, 0, 0) -- Warna merah
+    circle.Thickness = 2 -- Ketebalan garis
+    circle.Filled = false -- Tidak diisi (hanya garis)
 
-        local line = Drawing.new("Line")
-        line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-        line.To = Camera:WorldToViewportPoint(endPoint)
-        line.Color = Color3.new(1, 0, 0)
-        line.Thickness = 2
-        table.insert(fovLines, line)
-    end
-
-    return fovLines
+    return circle
 end
 
-local function clearPOV(lines)
-    for _, line in pairs(lines) do
-        line:Remove()
+local function clearPOV(circle)
+    if circle then
+        circle:Remove()
     end
 end
+
+-- Loop untuk memperbarui visualisasi POV
+RunService.RenderStepped:Connect(function()
+    if showPOV then
+        if povCircle then
+            clearPOV(povCircle)
+        end
+        povCircle = drawPOV()
+    end
+end)
 
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
@@ -274,6 +277,7 @@ local Toggle3 = Tab:CreateToggle({
     end
 })
 
+-- Toggle untuk menampilkan/menyembunyikan POV
 local Toggle4 = Tab:CreateToggle({
     Name = "Show POV",
     CurrentValue = false,
@@ -281,10 +285,16 @@ local Toggle4 = Tab:CreateToggle({
     Callback = function(Value)
         showPOV = Value
         if not Value then
-            clearPOV(fovLines)
+            clearPOV(povCircle)
+            povCircle = nil
+        else
+            povCircle = drawPOV()
         end
     end
 })
+
+-- Variabel untuk menyimpan lingkaran POV
+local povCircle = nil
 
 monitorPlayerRole()
 updateAllowedPlayers()
