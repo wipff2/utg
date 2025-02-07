@@ -44,8 +44,34 @@ local Camera = workspace.CurrentCamera
 local autotagEnabled = false
 local teamCheckEnabled = false
 local legitTagEnabled = false
-local maxDistance = 6 -- Jarak maksimal untuk tagging
+local maxDistance = 6
 
+-- Fungsi untuk memperbarui daftar pemain yang boleh ditag
+local function updateAllowedPlayers()
+    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
+    if not playerHighlightsFolder then
+        allowedPlayers = {} -- Reset jika folder tidak ditemukan
+        return
+    end
+    allowedPlayers = {} -- Bersihkan daftar sebelumnya
+    for _, child in pairs(playerHighlightsFolder:GetChildren()) do
+        if child:IsA("Model") and Players:FindFirstChild(child.Name) then
+            table.insert(allowedPlayers, child.Name)
+        end
+    end
+end
+
+local function monitorPlayerHighlights()
+    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
+    if not playerHighlightsFolder then return end
+
+    playerHighlightsFolder.ChildAdded:Connect(updateAllowedPlayers)
+    playerHighlightsFolder.ChildRemoved:Connect(updateAllowedPlayers)
+end
+
+-- **Panggil fungsi setelah deklarasi**
+updateAllowedPlayers()
+monitorPlayerHighlights()
 -- Fungsi untuk mengecek apakah pemain berada dalam Field of View (POV)
 local function isInFOV(targetPlayer)
     local character = LocalPlayer.Character
