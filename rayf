@@ -47,6 +47,7 @@ local teamCheckEnabled = false
 local legitTagEnabled = false
 local maxDistance = 6
 local isPaused = false
+local showPOV = false
 
 -- Fungsi untuk memperbarui daftar pemain yang boleh ditag
 local function updateAllowedPlayers()
@@ -74,7 +75,7 @@ end
 updateAllowedPlayers()
 monitorPlayerHighlights()
 
--- Fungsi untuk mengecek apakah pemain berada dalam Field of View (POV)
+-- Fungsi untuk mengecek apakah pemain berada dalam Field of View (POV) 30 derajat
 local function isInFOV(targetPlayer)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
@@ -89,7 +90,7 @@ local function isInFOV(targetPlayer)
     local directionToTarget = (targetPosition - cameraPosition).Unit
     local dotProduct = cameraLookVector:Dot(directionToTarget)
 
-    return dotProduct > 0.7
+    return dotProduct > math.cos(math.rad(15)) -- 30 derajat total (15 derajat ke kiri dan kanan)
 end
 
 local function isTargetVisible(targetCharacter)
@@ -102,7 +103,7 @@ local function isTargetVisible(targetCharacter)
 
     RaycastParams.FilterDescendantsInstances = {character, Camera}
     RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    
+
     local result = workspace:Raycast(origin, (targetPosition - origin).Unit * maxDistance, RaycastParams)
     return result and result.Instance and result.Instance:IsDescendantOf(targetCharacter)
 end
@@ -121,7 +122,7 @@ local function getClosestPlayer()
             local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
             local distance = (localPosition - targetPosition).Magnitude
 
-            if distance <= maxDistance and distance < shortestDistance and isTargetVisible(targetPlayer.Character) then
+            if distance <= maxDistance and distance < shortestDistance and isTargetVisible(targetPlayer.Character) and isInFOV(targetPlayer) then
                 closestPlayer = targetPlayer
                 shortestDistance = distance
             end
@@ -132,10 +133,10 @@ end
 
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
-    
+
     if closestPlayer then
         task.wait(math.random(20, 50) / 100)
-        
+
         local args = {
             [1] = closestPlayer.Character.Humanoid,
             [2] = Vector3.new(0.121, -0.692, -0.710)
@@ -211,6 +212,35 @@ local function stopAllTasks()
     isPaused = false
 end
 
+-- Fungsi untuk menggambar POV di layar
+local function drawPOV()
+    if not showPOV then return end
+
+    local fovAngle = math.rad(30)
+    local fovLines = {}
+
+    for i = 1, 2 do
+        local angle = fovAngle * (i == 1 and -1 or 1)
+        local direction = Camera.CFrame.LookVector * math.cos(angle) + Camera.CFrame.RightVector * math.sin(angle)
+        local endPoint = Camera.CFrame.Position + direction * maxDistance
+
+        local line = Drawing.new("Line")
+        line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        line.To = Camera:WorldToViewportPoint(endPoint)
+        line.Color = Color3.new(1, 0, 0)
+        line.Thickness = 2
+        table.insert(fovLines, line)
+    end
+
+    return fovLines
+end
+
+local function clearPOV(lines)
+    for _, line in pairs(lines) do
+        line:Remove()
+    end
+end
+
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
     CurrentValue = false,
@@ -244,8 +274,29 @@ local Toggle3 = Tab:CreateToggle({
     end
 })
 
+local Toggle4 = Tab:CreateToggle({
+    Name = "Show POV",
+    CurrentValue = false,
+    Flag = "ShowPOVToggle",
+    Callback = function(Value)
+        showPOV = Value
+        if not Value then
+            clearPOV(fovLines)
+        end
+    end
+})
+
 monitorPlayerRole()
 updateAllowedPlayers()
+
+-- Loop untuk menggambar POV
+local fovLines = {}
+RunService.RenderStepped:Connect(function()
+    if showPOV then
+        clearPOV(fovLines)
+        fovLines = drawPOV()
+    end
+end)
 local Section = Tab:CreateSection("Mode tag")
 -- Membuat Button
 local Button = Tab:CreateButton({
