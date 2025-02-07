@@ -112,66 +112,82 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-local function autoFireClosestPlayer()
-    local closestPlayer = getClosestPlayer()
-    if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
-        local args = {
-            [1] = closestPlayer.Character.Humanoid,
-            [2] = Vector3.new(0.12117216736078262, -0.6929889917373657, -0.7106921672821045)
-        }
-        
-        -- Print informasi sebelum melakukan tag
-        print("Menargetkan:", closestPlayer.Name, "dalam jarak:", 
-              (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).Magnitude)
+local function isInFOV(targetPlayer)
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return false end
 
-        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
-        
-        -- Print konfirmasi setelah invoke
-        print("Berhasil menandai:", closestPlayer.Name)
-    else
-        print("Tidak ada pemain dalam jarak yang bisa ditandai.")
-    end
+    local targetCharacter = targetPlayer.Character
+    if not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then return false end
+
+    local localPos = localCharacter.HumanoidRootPart.Position
+    local targetPos = targetCharacter.HumanoidRootPart.Position
+    local direction = (targetPos - localPos).unit
+    local lookVector = localCharacter.HumanoidRootPart.CFrame.LookVector
+
+    -- Sudut maksimum yang diperbolehkan (30 derajat)
+    local maxAngle = math.cos(math.rad(30))
+
+    return direction:Dot(lookVector) > maxAngle
 end
 
-local taskHandle = nil -- Menyimpan referensi tugas auto-tagging
+local function autoFireClosestPlayer()
+    local closestPlayer = getClosestPlayer()
+
+    if closestPlayer and isInFOV(closestPlayer) then
+        local args = {
+            [1] = closestPlayer.Character.Humanoid,
+            [2] = Vector3.new(0.121, -0.693, -0.711) -- Simulasi tembakan
+        }
+
+        -- Gunakan pcall untuk menghindari crash jika terdeteksi
+        local success, err = pcall(function()
+            ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+        end)
+
+        if success then
+            print("[DEBUG] Berhasil menandai:", closestPlayer.Name)
+        else
+            print("[ERROR] Gagal melakukan tagging:", err)
+        end
+    else
+        print("[DEBUG] Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
+    end
+end
 
 local function startAutoTagging()
     print("[DEBUG] Auto-tagging dimulai") -- Tambahkan log saat fungsi dimulai
     
     while autotagEnabled do
-        print("[DEBUG] Loop Auto Tagging berjalan") -- Cek apakah loop berjalan
-        
         local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
         local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
         local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
-        -- Jika gamemode adalah Voting atau Intermission, hentikan sementara
+        -- Hentikan sementara jika gamemode adalah Voting atau Intermission
         if gamemode == "Voting" or gamemode == "Intermission" then
             print("[DEBUG] Auto Tag berhenti karena mode permainan:", gamemode)
             repeat
-                task.wait(1) -- Tunggu hingga gamemode berubah
+                task.wait(math.random(1, 2)) -- Tunggu hingga gamemode berubah dengan jeda acak
                 gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
             until gamemode ~= "Voting" and gamemode ~= "Intermission"
             print("[DEBUG] Gamemode berubah menjadi:", gamemode, "- Auto Tag dilanjutkan!")
         end
 
-        -- Cek apakah mode permainan Chaos, Crown, atau SoloCrown
         local isSpecialGamemode = (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown")
 
         -- Hanya hentikan Auto Tag jika player mati DAN tidak dalam mode spesial
         if myPlayerRole == "Dead" and not isSpecialGamemode then
             print("[DEBUG] Tidak bisa Auto Tag karena pemain sudah mati dan bukan di mode spesial!")
-            task.wait(1) -- Tunggu sebelum mencoba lagi
+            task.wait(math.random(1, 2))
         else
             print("[DEBUG] Auto Tag akan dijalankan! (Mode:", gamemode, "Role:", myPlayerRole, ")")
-            autoFireClosestPlayer() -- Selalu lakukan Auto Tag
-            
-            local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
+            autoFireClosestPlayer()
+
+            local waitTime = legitTagEnabled and math.random(50, 200) / 100 or math.random(30, 150) / 100
             print("[DEBUG] Menunggu", waitTime, "detik sebelum tagging berikutnya")
             task.wait(waitTime)
         end
 
-        task.wait(1) -- Tunggu sebelum mengulang loop
+        task.wait(math.random(1, 2)) -- Tambahkan delay acak setelah setiap loop
     end
 
     print("[DEBUG] Auto-tagging dihentikan") -- Tambahkan log saat loop berhenti
