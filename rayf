@@ -145,6 +145,16 @@ local function startAutoTagging()
         local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
         local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
+        -- Jika gamemode adalah Voting atau Intermission, hentikan sementara
+        if gamemode == "Voting" or gamemode == "Intermission" then
+            print("[DEBUG] Auto Tag berhenti karena mode permainan:", gamemode)
+            repeat
+                task.wait(1) -- Tunggu hingga gamemode berubah
+                gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
+            until gamemode ~= "Voting" and gamemode ~= "Intermission"
+            print("[DEBUG] Gamemode berubah menjadi:", gamemode, "- Auto Tag dilanjutkan!")
+        end
+
         -- Cek apakah mode permainan Chaos, Crown, atau SoloCrown
         local isSpecialGamemode = (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown")
 
