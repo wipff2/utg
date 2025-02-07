@@ -144,7 +144,7 @@ local function autoFireClosestPlayer()
 
         ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
 
-        task.wait(math.random(30, 150) / 100)
+        task.wait(math.random(40, 150) / 100)
 
         print("✅ Berhasil menandai:", closestPlayer.Name)
     else
@@ -212,37 +212,7 @@ local function stopAllTasks()
     isPaused = false
 end
 
-local function drawPOV()
-    if not showPOV then return end
 
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) -- Pusat layar
-    local radius = (maxDistance / 100) * Camera.ViewportSize.X -- Radius lingkaran (disesuaikan dengan jarak)
-
-    local circle = Drawing.new("Circle")
-    circle.Position = center
-    circle.Radius = radius
-    circle.Color = Color3.new(1, 0, 0) -- Warna merah
-    circle.Thickness = 2 -- Ketebalan garis
-    circle.Filled = false -- Tidak diisi (hanya garis)
-
-    return circle
-end
-
-local function clearPOV(circle)
-    if circle then
-        circle:Remove()
-    end
-end
-
--- Loop untuk memperbarui visualisasi POV
-RunService.RenderStepped:Connect(function()
-    if showPOV then
-        if povCircle then
-            clearPOV(povCircle)
-        end
-        povCircle = drawPOV()
-    end
-end)
 
 local Toggle1 = Tab:CreateToggle({
     Name = "Auto tag",
@@ -277,37 +247,9 @@ local Toggle3 = Tab:CreateToggle({
     end
 })
 
--- Toggle untuk menampilkan/menyembunyikan POV
-local Toggle4 = Tab:CreateToggle({
-    Name = "Show POV",
-    CurrentValue = false,
-    Flag = "ShowPOVToggle",
-    Callback = function(Value)
-        showPOV = Value
-        if not Value then
-            clearPOV(povCircle)
-            povCircle = nil
-        else
-            povCircle = drawPOV()
-        end
-    end
-})
-
--- Variabel untuk menyimpan lingkaran POV
-local povCircle = nil
-
 monitorPlayerRole()
 updateAllowedPlayers()
-
--- Loop untuk menggambar POV
-local fovLines = {}
-RunService.RenderStepped:Connect(function()
-    if showPOV then
-        clearPOV(fovLines)
-        fovLines = drawPOV()
-    end
-end)
-local Section = Tab:CreateSection("Mode tag")
+local Section = Tab:CreateSection("Mods tag")
 -- Membuat Button
 local Button = Tab:CreateButton({
    Name = "fast tag (can't turn off)",
