@@ -145,30 +145,20 @@ local function startAutoTagging()
         local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
         local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
-        -- Jika dalam mode Voting, Votings, atau Intermission, tunggu hingga gamemode berubah
-        while autotagEnabled and (gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission") do
-            print("[DEBUG] Mode permainan tidak memungkinkan Auto Tag. Menunggu...")
-            task.wait(1) -- Tunggu 1 detik sebelum mengecek lagi
-            gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
-        end
+        -- Cek apakah mode permainan Chaos, Crown, atau SoloCrown
+        local isSpecialGamemode = (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown")
 
-        -- Jika autotagEnabled dimatikan saat menunggu, keluar dari loop
-        if not autotagEnabled then break end
-
-        -- Tunggu 1 detik setelah gamemode berubah sebelum melanjutkan tag
-        task.wait(1)
-
-        -- Cek kondisi untuk mulai auto tag
-        if myPlayerRole ~= "Dead" and (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
-            print("[DEBUG] Memulai tagging pemain terdekat...") -- Log saat tagging dimulai
-            
-            autoFireClosestPlayer()
+        -- Hanya hentikan Auto Tag jika player mati DAN tidak dalam mode spesial
+        if myPlayerRole == "Dead" and not isSpecialGamemode then
+            print("[DEBUG] Tidak bisa Auto Tag karena pemain sudah mati dan bukan di mode spesial!")
+            task.wait(1) -- Tunggu sebelum mencoba lagi
+        else
+            print("[DEBUG] Auto Tag akan dijalankan! (Mode:", gamemode, "Role:", myPlayerRole, ")")
+            autoFireClosestPlayer() -- Selalu lakukan Auto Tag
             
             local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
             print("[DEBUG] Menunggu", waitTime, "detik sebelum tagging berikutnya")
             task.wait(waitTime)
-        else
-            print("[DEBUG] Pemain tidak memenuhi syarat untuk Auto Tag.")
         end
 
         task.wait(1) -- Tunggu sebelum mengulang loop
