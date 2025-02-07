@@ -39,71 +39,49 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
 local autotagEnabled = false
 local teamCheckEnabled = false
 local legitTagEnabled = false
-local activeTasks = {} -- Menyimpan tugas aktif
+local maxDistance = 6 -- Jarak maksimal untuk tagging
 
--- Daftar nama pemain yang boleh ditag (diperbarui secara dinamis)
-local allowedPlayers = {}
+-- Fungsi untuk mengecek apakah pemain berada dalam Field of View (POV)
+local function isInFOV(targetPlayer)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
 
--- Fungsi untuk memeriksa apakah pemain boleh ditag berdasarkan teamCheckEnabled
-local function isPlayerAllowed(targetPlayer)
-    if not teamCheckEnabled then
-        return true -- Jika team check tidak aktif, semua pemain boleh ditag
-    end
+    local targetCharacter = targetPlayer.Character
+    if not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then return false end
 
-    -- Pastikan kedua pemain memiliki Team
-    if LocalPlayer.Team and targetPlayer.Team then
-        return LocalPlayer.Team ~= targetPlayer.Team -- Hanya tag pemain di tim berbeda
-    end
-    return true
+    local cameraPosition = Camera.CFrame.Position
+    local cameraLookVector = Camera.CFrame.LookVector
+    local targetPosition = targetCharacter.HumanoidRootPart.Position
+
+    -- Hitung vektor dari kamera ke target
+    local directionToTarget = (targetPosition - cameraPosition).Unit
+    local dotProduct = cameraLookVector:Dot(directionToTarget)
+
+    -- Jika dotProduct lebih dari 0.7, berarti target ada di dalam POV
+    return dotProduct > 0.7
 end
 
--- Fungsi untuk memperbarui daftar pemain yang boleh ditag
-local function updateAllowedPlayers()
-    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
-    if not playerHighlightsFolder then
-        allowedPlayers = {} -- Reset jika folder tidak ditemukan
-        return
-    end
-    allowedPlayers = {} -- Bersihkan daftar sebelumnya
-    for _, child in pairs(playerHighlightsFolder:GetChildren()) do
-        if child:IsA("Model") and Players:FindFirstChild(child.Name) then
-            table.insert(allowedPlayers, child.Name)
-        end
-    end
-end
-
--- Fungsi untuk memantau perubahan dalam PlayerHighlights
-local function monitorPlayerHighlights()
-    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
-    if not playerHighlightsFolder then return end
-
-    playerHighlightsFolder.ChildAdded:Connect(updateAllowedPlayers)
-    playerHighlightsFolder.ChildRemoved:Connect(updateAllowedPlayers)
-end
-
--- Fungsi untuk mendapatkan pemain terdekat yang boleh ditag
+-- Fungsi untuk mendapatkan pemain terdekat yang bisa ditag
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
-    local maxDistance = legitTagEnabled and 6 or 6 -- Bisa disesuaikan
 
-    local localCharacter = LocalPlayer.Character
-    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return nil end
-    local localPosition = localCharacter.HumanoidRootPart.Position
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local localPosition = character.HumanoidRootPart.Position
 
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= LocalPlayer 
-            and targetPlayer.Character 
-            and targetPlayer.Character:FindFirstChild("HumanoidRootPart") 
-            and isPlayerAllowed(targetPlayer) then
-
+        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
             local distance = (localPosition - targetPosition).Magnitude
 
-            if distance <= maxDistance and distance < shortestDistance then
+            if distance <= maxDistance and distance < shortestDistance and isInFOV(targetPlayer) then
                 closestPlayer = targetPlayer
                 shortestDistance = distance
             end
@@ -112,101 +90,62 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-local function isInFOV(targetPlayer)
-    local localCharacter = LocalPlayer.Character
-    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return false end
-
-    local targetCharacter = targetPlayer.Character
-    if not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then return false end
-
-    local localPos = localCharacter.HumanoidRootPart.Position
-    local targetPos = targetCharacter.HumanoidRootPart.Position
-    local direction = (targetPos - localPos).unit
-    local lookVector = localCharacter.HumanoidRootPart.CFrame.LookVector
-
-    -- Sudut maksimum yang diperbolehkan (30 derajat)
-    local maxAngle = math.cos(math.rad(30))
-
-    return direction:Dot(lookVector) > maxAngle
-end
-
+-- Fungsi untuk melakukan tagging dengan cara yang lebih alami
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
+    
+    if closestPlayer then
+        -- Simulasi delay sebelum tagging agar tidak terdeteksi
+        task.wait(math.random(20, 50) / 100) -- Delay 0.2 - 0.5 detik
 
-    if closestPlayer and isInFOV(closestPlayer) then
+        -- Kirim request tagging
         local args = {
             [1] = closestPlayer.Character.Humanoid,
-            [2] = Vector3.new(0.121, -0.693, -0.711) -- Simulasi tembakan
+            [2] = Vector3.new(0.121, -0.692, -0.710)
         }
 
-        -- Gunakan pcall untuk menghindari crash jika terdeteksi
-        local success, err = pcall(function()
-            ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
-        end)
+        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
 
-        if success then
-            print("[DEBUG] Berhasil menandai:", closestPlayer.Name)
-        else
-            print("[ERROR] Gagal melakukan tagging:", err)
-        end
+        -- Simulasi delay setelah tagging
+        task.wait(math.random(30, 150) / 100) -- Delay 0.3 - 1.5 detik
+
+        print("✅ Berhasil menandai:", closestPlayer.Name)
     else
-        print("[DEBUG] Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
+        print("❌ Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
     end
 end
 
+-- Fungsi untuk memulai Auto Tag dengan sistem yang lebih alami
 local function startAutoTagging()
-    print("[DEBUG] Auto-tagging dimulai") -- Tambahkan log saat fungsi dimulai
-    
     while autotagEnabled do
+        -- Cek gamemode dan hentikan Auto Tag saat Voting atau Intermission
         local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
         local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
         local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
-        -- Hentikan sementara jika gamemode adalah Voting atau Intermission
         if gamemode == "Voting" or gamemode == "Intermission" then
-            print("[DEBUG] Auto Tag berhenti karena mode permainan:", gamemode)
-            repeat
-                task.wait(math.random(1, 2)) -- Tunggu hingga gamemode berubah dengan jeda acak
-                gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
-            until gamemode ~= "Voting" and gamemode ~= "Intermission"
-            print("[DEBUG] Gamemode berubah menjadi:", gamemode, "- Auto Tag dilanjutkan!")
+            print("⏸️ Auto Tag dihentikan karena mode Voting/Intermission.")
+            return
         end
 
-        local isSpecialGamemode = (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown")
-
-        -- Hanya hentikan Auto Tag jika player mati DAN tidak dalam mode spesial
-        if myPlayerRole == "Dead" and not isSpecialGamemode then
-            print("[DEBUG] Tidak bisa Auto Tag karena pemain sudah mati dan bukan di mode spesial!")
-            task.wait(math.random(1, 2))
-        else
-            print("[DEBUG] Auto Tag akan dijalankan! (Mode:", gamemode, "Role:", myPlayerRole, ")")
-            autoFireClosestPlayer()
-
-            local waitTime = legitTagEnabled and math.random(50, 200) / 100 or math.random(30, 150) / 100
-            print("[DEBUG] Menunggu", waitTime, "detik sebelum tagging berikutnya")
-            task.wait(waitTime)
+        -- Auto Tag tetap berjalan di mode Chaos, Crown, SoloCrown walaupun Dead
+        if myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
+            print("❌ Auto Tag dihentikan karena PlayerRole 'Dead' di mode selain Chaos/Crown/SoloCrown.")
+            return
         end
 
-        task.wait(math.random(1, 2)) -- Tambahkan delay acak setelah setiap loop
+        autoFireClosestPlayer()
+
+        -- Tunggu sebelum mengulang loop dengan delay acak
+        task.wait(legitTagEnabled and math.random(2, 3) * 0.1 or math.random(5, 15) / 10)
     end
-
-    print("[DEBUG] Auto-tagging dihentikan") -- Tambahkan log saat loop berhenti
 end
 
 -- Fungsi untuk menghentikan semua tugas saat toggle dimatikan
 local function stopAllTasks()
-    print("[DEBUG] Semua tugas dihentikan")
-    
     autotagEnabled = false
     teamCheckEnabled = false
     legitTagEnabled = false
-
-    -- Batalkan tugas yang sedang berjalan jika ada
-    if taskHandle then
-        print("[DEBUG] Membatalkan tugas Auto Tag yang sedang berjalan")
-        task.cancel(taskHandle)
-        taskHandle = nil
-    end
 end
 
 -- Toggle Auto Tag
@@ -216,19 +155,8 @@ local Toggle1 = Tab:CreateToggle({
     Flag = "AutoTagToggle",
     Callback = function(Value)
         autotagEnabled = Value
-        print("[DEBUG] AutoTag Toggle:", Value) -- Log saat toggle berubah
-        
         if Value then
-            -- Hentikan tugas sebelumnya jika masih berjalan
-            if taskHandle then
-                print("[DEBUG] Menghentikan tugas lama sebelum memulai yang baru")
-                task.cancel(taskHandle)
-            end
-
-            -- Mulai tugas baru dan simpan referensinya
-            print("[DEBUG] Memulai Auto Tagging...")
-            taskHandle = task.spawn(startAutoTagging)
-            monitorPlayerHighlights() -- Pantau perubahan di folder PlayerHighlights
+            task.spawn(startAutoTagging)
         else
             stopAllTasks()
         end
@@ -242,7 +170,6 @@ local Toggle2 = Tab:CreateToggle({
     Flag = "TeamCheckToggle",
     Callback = function(Value)
         teamCheckEnabled = Value
-        print("[DEBUG] Team Check Toggle:", Value)
     end
 })
 
@@ -253,7 +180,6 @@ local Toggle3 = Tab:CreateToggle({
     Flag = "LegitTagToggle",
     Callback = function(Value)
         legitTagEnabled = Value
-        print("[DEBUG] Legit Tag Toggle:", Value)
     end
 })
 
