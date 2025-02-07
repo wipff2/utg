@@ -136,13 +136,18 @@ end
 local taskHandle = nil -- Menyimpan referensi tugas auto-tagging
 
 local function startAutoTagging()
+    print("[DEBUG] Auto-tagging dimulai") -- Tambahkan log saat fungsi dimulai
+    
     while autotagEnabled do
+        print("[DEBUG] Loop Auto Tagging berjalan") -- Cek apakah loop berjalan
+        
         local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
         local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
         local myPlayerRole = LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value
 
         -- Jika dalam mode Voting, Votings, atau Intermission, tunggu hingga gamemode berubah
         while autotagEnabled and (gamemode == "Voting" or gamemode == "Votings" or gamemode == "Intermission") do
+            print("[DEBUG] Mode permainan tidak memungkinkan Auto Tag. Menunggu...")
             task.wait(1) -- Tunggu 1 detik sebelum mengecek lagi
             gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
         end
@@ -155,22 +160,34 @@ local function startAutoTagging()
 
         -- Cek kondisi untuk mulai auto tag
         if myPlayerRole ~= "Dead" and (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
+            print("[DEBUG] Memulai tagging pemain terdekat...") -- Log saat tagging dimulai
+            
             autoFireClosestPlayer()
-            task.wait(legitTagEnabled and math.random(2, 3) * 0.1 or 0.3)
+            
+            local waitTime = legitTagEnabled and math.random(2, 3) * 0.1 or 0.3
+            print("[DEBUG] Menunggu", waitTime, "detik sebelum tagging berikutnya")
+            task.wait(waitTime)
+        else
+            print("[DEBUG] Pemain tidak memenuhi syarat untuk Auto Tag.")
         end
 
         task.wait(1) -- Tunggu sebelum mengulang loop
     end
+
+    print("[DEBUG] Auto-tagging dihentikan") -- Tambahkan log saat loop berhenti
 end
 
 -- Fungsi untuk menghentikan semua tugas saat toggle dimatikan
 local function stopAllTasks()
+    print("[DEBUG] Semua tugas dihentikan")
+    
     autotagEnabled = false
     teamCheckEnabled = false
     legitTagEnabled = false
 
     -- Batalkan tugas yang sedang berjalan jika ada
     if taskHandle then
+        print("[DEBUG] Membatalkan tugas Auto Tag yang sedang berjalan")
         task.cancel(taskHandle)
         taskHandle = nil
     end
@@ -183,13 +200,17 @@ local Toggle1 = Tab:CreateToggle({
     Flag = "AutoTagToggle",
     Callback = function(Value)
         autotagEnabled = Value
+        print("[DEBUG] AutoTag Toggle:", Value) -- Log saat toggle berubah
+        
         if Value then
             -- Hentikan tugas sebelumnya jika masih berjalan
             if taskHandle then
+                print("[DEBUG] Menghentikan tugas lama sebelum memulai yang baru")
                 task.cancel(taskHandle)
             end
 
             -- Mulai tugas baru dan simpan referensinya
+            print("[DEBUG] Memulai Auto Tagging...")
             taskHandle = task.spawn(startAutoTagging)
             monitorPlayerHighlights() -- Pantau perubahan di folder PlayerHighlights
         else
@@ -205,6 +226,7 @@ local Toggle2 = Tab:CreateToggle({
     Flag = "TeamCheckToggle",
     Callback = function(Value)
         teamCheckEnabled = Value
+        print("[DEBUG] Team Check Toggle:", Value)
     end
 })
 
@@ -215,6 +237,7 @@ local Toggle3 = Tab:CreateToggle({
     Flag = "LegitTagToggle",
     Callback = function(Value)
         legitTagEnabled = Value
+        print("[DEBUG] Legit Tag Toggle:", Value)
     end
 })
 
