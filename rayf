@@ -112,7 +112,6 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Fungsi untuk menembak pemain terdekat
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
     if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Humanoid") then
@@ -120,8 +119,17 @@ local function autoFireClosestPlayer()
             [1] = closestPlayer.Character.Humanoid,
             [2] = Vector3.new(0.12117216736078262, -0.6929889917373657, -0.7106921672821045)
         }
+        
+        -- Print informasi sebelum melakukan tag
+        print("Menargetkan:", closestPlayer.Name, "dalam jarak:", 
+              (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).Magnitude)
+
         ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
-        print("Tagged:", closestPlayer.Name)
+        
+        -- Print konfirmasi setelah invoke
+        print("Berhasil menandai:", closestPlayer.Name)
+    else
+        print("Tidak ada pemain dalam jarak yang bisa ditandai.")
     end
 end
 
