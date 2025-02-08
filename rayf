@@ -47,7 +47,6 @@ local teamCheckEnabled = false
 local legitTagEnabled = false
 local maxDistance = 6
 local isPaused = false
-local tagCount = 0
 
 -- Fungsi untuk memperbarui daftar pemain yang boleh ditag
 local function updateAllowedPlayers()
@@ -90,7 +89,7 @@ local function isInFOV(targetPlayer)
     local directionToTarget = (targetPosition - cameraPosition).Unit
     local dotProduct = cameraLookVector:Dot(directionToTarget)
 
-    return dotProduct > 0.6 -- Mengurangi ambang batas agar terlihat lebih natural
+    return dotProduct > 0.7
 end
 
 local function isTargetVisible(targetCharacter)
@@ -103,7 +102,7 @@ local function isTargetVisible(targetCharacter)
 
     RaycastParams.FilterDescendantsInstances = {character, Camera}
     RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-
+    
     local result = workspace:Raycast(origin, (targetPosition - origin).Unit * maxDistance, RaycastParams)
     return result and result.Instance and result.Instance:IsDescendantOf(targetCharacter)
 end
@@ -131,14 +130,25 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-local function simulatePlayerMovement(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return end
-    local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+local function autoFireClosestPlayer()
+    local closestPlayer = getClosestPlayer()
+    
+    if closestPlayer then
+        task.wait(math.random(20, 50) / 100)
+        
+        local args = {
+            [1] = closestPlayer.Character.Humanoid,
+            [2] = Vector3.new(0.121, -0.692, -0.710)
+        }
 
-    local randomOffset = Vector3.new(math.random(-1, 1) * 0.1, 0, math.random(-1, 1) * 0.1)
-    local newLookVector = (targetPosition + randomOffset - Camera.CFrame.Position).Unit
+        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
 
-    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, Camera.CFrame.Position + newLookVector)
+        task.wait(math.random(30, 150) / 100)
+
+        print("✅ Berhasil menandai:", closestPlayer.Name)
+    else
+        print("❌ Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
+    end
 end
 
 local function autoFireClosestPlayer()
@@ -166,7 +176,6 @@ local function autoFireClosestPlayer()
         print("❌ Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
     end
 end
-
 local function startAutoTagging()
     while autotagEnabled do
         if isPaused or tagCount > 5 then -- Batasi tagging agar tidak mencurigakan
@@ -192,10 +201,77 @@ local function startAutoTagging()
         end
     end
 end
+local function resumeAutoTag()
+    if autotagEnabled and isPaused then
+        task.wait(2)
+        print("▶️ Auto Tag dilanjutkan.")
+        isPaused = false
+    end
+end
+
+local function monitorPlayerRole()
+    local playerRoleObj = LocalPlayer:FindFirstChild("PlayerRole")
+    if playerRoleObj then
+        playerRoleObj:GetPropertyChangedSignal("Value"):Connect(function()
+            if playerRoleObj.Value ~= "Dead" then
+                resumeAutoTag()
+            end
+        end)
+    end
+
+    local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
+    if gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") then
+        gamemodeValue.Gamemode:GetPropertyChangedSignal("Value"):Connect(function()
+            if gamemodeValue.Gamemode.Value ~= "Voting" and gamemodeValue.Gamemode.Value ~= "Intermission" then
+                resumeAutoTag()
+            end
+        end)
+    end
+end
+
+local function stopAllTasks()
+    autotagEnabled = false
+    teamCheckEnabled = false
+    legitTagEnabled = false
+    isPaused = false
+end
+
+local Toggle1 = Tab:CreateToggle({
+    Name = "Auto tag",
+    CurrentValue = false,
+    Flag = "AutoTagToggle",
+    Callback = function(Value)
+        autotagEnabled = Value
+        if Value then
+            isPaused = false
+            task.spawn(startAutoTagging)
+        else
+            stopAllTasks()
+        end
+    end
+})
+
+local Toggle2 = Tab:CreateToggle({
+    Name = "Team check",
+    CurrentValue = false,
+    Flag = "TeamCheckToggle",
+    Callback = function(Value)
+        teamCheckEnabled = Value
+    end
+})
+
+local Toggle3 = Tab:CreateToggle({
+    Name = "Legit tag",
+    CurrentValue = false,
+    Flag = "LegitTagToggle",
+    Callback = function(Value)
+        legitTagEnabled = Value
+    end
+})
 
 monitorPlayerRole()
 updateAllowedPlayers()
-local Section = Tab:CreateSection("Mods tag")
+local Section = Tab:CreateSection("Mode tag")
 -- Membuat Button
 local Button = Tab:CreateButton({
    Name = "fast tag (can't turn off)",
