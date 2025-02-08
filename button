@@ -65,8 +65,13 @@ local function getPlayerRole(player)
     return nil
 end
 
--- Fungsi untuk membuat hitbox
-local function createHitbox(player)
+local defaultSize = Vector3.new(2, 2, 1) -- Ukuran default HumanoidRootPart
+local defaultTransparency = 1            -- Transparansi default
+local activeSize = Vector3.new(20, 20, 20) -- Ukuran saat tombol aktif
+local activeTransparency = 0.7            -- Transparansi saat tombol aktif
+local hitboxActive = false
+
+local function adjustHumanoidRootPart(player, isActive)
     if player == speaker then return end
 
     local character = player.Character
@@ -80,6 +85,11 @@ local function createHitbox(player)
         return
     end
 
+<<<<<<< HEAD
+    -- Atur ukuran dan transparansi berdasarkan status tombol
+    humanoidRootPart.Size = isActive and activeSize or defaultSize
+    humanoidRootPart.Transparency = isActive and activeTransparency or defaultTransparency
+=======
     if not humanoidRootPart:FindFirstChild("Hitbox") then
         local hitbox = Instance.new("Part")
         hitbox.Name = "Hitbox"
@@ -96,6 +106,7 @@ local function createHitbox(player)
         weld.Part1 = hitbox
         weld.Parent = hitbox
     end
+>>>>>>> ea8e5d2f4159597b40eda4b9119506c0c3a8cbb2
 end
 
 -- Fungsi untuk menghapus hitbox
@@ -116,18 +127,17 @@ end)
 local hitboxActive = false
 local function toggleHitbox()
     hitboxActive = not hitboxActive
+    hitboxButton.Text = hitboxActive and "Stop Hitbox (H)" or "Start Hitbox (H)"
+
+    for _, player in pairs(Players:GetPlayers()) do
+        adjustHumanoidRootPart(player, hitboxActive)
+    end
 
     if hitboxActive then
-        hitboxButton.Text = "Stop Hitbox (H)"
-
-        for _, player in pairs(Players:GetPlayers()) do
-            createHitbox(player)
-        end
-
         if not playerAddedConnection then
             playerAddedConnection = Players.PlayerAdded:Connect(function(newPlayer)
                 newPlayer.CharacterAdded:Connect(function()
-                    createHitbox(newPlayer)
+                    adjustHumanoidRootPart(newPlayer, hitboxActive)
                 end)
             end)
         end
@@ -135,17 +145,11 @@ local function toggleHitbox()
         if not heartbeatConnection then
             heartbeatConnection = RunService.Heartbeat:Connect(function()
                 for _, player in pairs(Players:GetPlayers()) do
-                    createHitbox(player)
+                    adjustHumanoidRootPart(player, hitboxActive)
                 end
             end)
         end
     else
-        hitboxButton.Text = "Start Hitbox (H)"
-
-        for _, player in pairs(Players:GetPlayers()) do
-            destroyHitbox(player)
-        end
-
         if playerAddedConnection then
             playerAddedConnection:Disconnect()
             playerAddedConnection = nil
@@ -156,13 +160,6 @@ local function toggleHitbox()
             heartbeatConnection = nil
         end
     end
-end
-
--- Pastikan tombol ada sebelum menghubungkan event
-if hitboxButton then
-    hitboxButton.MouseButton1Click:Connect(toggleHitbox)
-else
-    warn("⚠️ Tidak bisa menghubungkan event karena tombol tidak ditemukan!")
 end
 
 -- Variables for visibility toggle
@@ -503,8 +500,35 @@ while farmCoinActive do
     task.wait(0.6) -- Tunggu 0.6 detik sebelum iterasi berikutnya untuk mengurangi beban CPU
 end
 
+local UserInputService = game:GetService("UserInputService")
+
+-- Fungsi untuk menangani input keyboard
+local function onInputBegan(input, gameProcessed)
+    if gameProcessed then return end  -- Hindari memproses input yang sudah digunakan oleh game
+
+    if input.KeyCode == Enum.KeyCode.T then
+        toggleTeleport()
+    elseif input.KeyCode == Enum.KeyCode.R then
+        teleportAndCreateBlock()
+    elseif input.KeyCode == Enum.KeyCode.F then
+        toggleFarmCoin()
+    elseif input.KeyCode == Enum.KeyCode.H then
+        toggleHitbox()
+    end
+end
+
+-- Hubungkan event ke tombol UI
 teleportButton.MouseButton1Click:Connect(toggleTeleport)
 teleportAndCreateBlockButton.MouseButton1Click:Connect(teleportAndCreateBlock)
 farmCoinButton.MouseButton1Click:Connect(toggleFarmCoin)
+
+if hitboxButton then
+    hitboxButton.MouseButton1Click:Connect(toggleHitbox)
+else
+    warn("⚠️ Tidak bisa menghubungkan event karena tombol tidak ditemukan!")
+end
+
+-- Hubungkan event ke keyboard
+UserInputService.InputBegan:Connect(onInputBegan)
 
 print("executing")
