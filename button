@@ -1,0 +1,92 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local hitboxActive = false
+local hitboxButton = script.Parent -- Asumsi tombol ada di GUI
+local playerAddedConnection
+local heartbeatConnection
+
+local function createHitbox(player)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local rootPart = player.Character.HumanoidRootPart
+        if not rootPart:FindFirstChild("Hitbox") then
+            local hitbox = Instance.new("Part")
+            hitbox.Name = "Hitbox"
+            hitbox.Size = Vector3.new(5, 5, 5)
+            hitbox.Transparency = 0.5
+            hitbox.Color = Color3.new(1, 0, 0)
+            hitbox.Anchored = false
+            hitbox.CanCollide = false
+            hitbox.Massless = true
+            hitbox.Parent = rootPart
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = rootPart
+            weld.Part1 = hitbox
+            weld.Parent = hitbox
+        end
+    end
+end
+
+local function removeHitboxes()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hitbox = player.Character.HumanoidRootPart:FindFirstChild("Hitbox")
+            if hitbox then
+                hitbox:Destroy()
+            end
+        end
+    end
+end
+
+local function toggleHitbox()
+    hitboxActive = not hitboxActive
+
+    if hitboxActive then
+        hitboxButton.Text = "Stop Hitbox (H)"
+
+        -- Buat hitbox untuk semua pemain yang ada
+        for _, player in pairs(Players:GetPlayers()) do
+            createHitbox(player)
+        end
+
+        -- Event listener untuk pemain yang baru masuk
+        playerAddedConnection = Players.PlayerAdded:Connect(function(newPlayer)
+            newPlayer.CharacterAdded:Connect(function()
+                createHitbox(newPlayer)
+            end)
+        end)
+
+        -- Update hitboxes dalam waktu nyata
+        heartbeatConnection = RunService.Heartbeat:Connect(function()
+            for _, player in pairs(Players:GetPlayers()) do
+                createHitbox(player)
+            end
+        end)
+    else
+        hitboxButton.Text = "Start Hitbox (H)"
+        removeHitboxes()
+
+        -- Hentikan event listener
+        if playerAddedConnection then
+            playerAddedConnection:Disconnect()
+            playerAddedConnection = nil
+        end
+
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+            heartbeatConnection = nil
+        end
+    end
+end
+hitboxButton.MouseButton1Click:Connect(toggleHitbox)
+-- Event Listener untuk pemain yang baru bergabung
+Players.PlayerAdded:Connect(function(player)
+    if hitboxActive then
+        createHitbox(player)
+    end
+end) -- Hanya satu `end` diperlukan di sini
+
+
+Players.PlayerRemoving:Connect(function(player)
+    destroyHitbox(player)
+end)
