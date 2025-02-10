@@ -37,19 +37,31 @@ local Tab = Window:CreateTab("Mainz", 4483362458) -- Title, Image
 local Section = Tab:CreateSection("Tagging")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.Camera
 local tagAura = false
 local ignoreDead = false
 local tagAuraMode = "Closest" -- Default Mode
-local tagAuraRange = 15 -- Default Range
+local tagAuraRange = 5 -- Default Range
 local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
+
+local lastLookTarget = nil -- Menyimpan pemain terakhir yang ditarget kamera
 
 -- Fungsi untuk mengecek apakah pemain valid untuk ditandai
 local function isPlayerValid(player)
     if not player or not player.Character or player == LocalPlayer then return false end
     if ignoreDead and player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead" then return false end
     return true
+end
+
+-- Fungsi untuk mengarahkan kamera ke target (hanya jika target baru)
+local function lookAtPlayer(target)
+    if target and target ~= lastLookTarget and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
+        lastLookTarget = target -- Simpan pemain yang baru saja ditarget
+    end
 end
 
 -- Fungsi utama untuk menjalankan Tag Aura
@@ -68,6 +80,7 @@ spawn(function()
                 end
                 if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("Humanoid") then
                     tagPlayerEvent:InvokeServer(nearestPlayer.Character.Humanoid, nearestPlayer.Character.HumanoidRootPart.Position)
+                    lookAtPlayer(nearestPlayer) -- Kamera hanya look sekali per target
                 end
             elseif tagAuraMode == "Multi Target" then
                 for _, player in pairs(Players:GetPlayers()) do
@@ -75,6 +88,7 @@ spawn(function()
                         local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
                         if distance <= tagAuraRange then
                             tagPlayerEvent:InvokeServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
+                            lookAtPlayer(player) -- Kamera hanya look sekali per pemain yang ditandai
                         end
                     end
                 end
@@ -119,7 +133,7 @@ local Dropdown = Tab:CreateDropdown({
 -- UI Slider untuk mengatur range Tag Aura
 local Slider = Tab:CreateSlider({
     Name = "Tag Aura Range",
-    Range = {5, 50},
+    Range = {1, 10},
     Increment = 1,
     Suffix = " studs",
     CurrentValue = 15,
