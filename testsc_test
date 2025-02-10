@@ -36,217 +36,111 @@ local Window = Rayfield:CreateWindow({
 local Tab = Window:CreateTab("Mainz", 4483362458) -- Title, Image
 local Section = Tab:CreateSection("Tagging")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Camera = workspace.Camera
-local RaycastParams = RaycastParams.new()
 
-local autotagEnabled = false
-local teamCheckEnabled = false
-local legitTagEnabled = false
-local maxDistance = 6
-local isPaused = false
+local LocalPlayer = Players.LocalPlayer
+local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
+
+local tagAura = false
+local ignoreDead = false
+local teamCheck = false
+local tagAuraMode = "Closest" -- Bisa diubah menjadi "Multi Target"
+local tagAuraRange = 10
+local maxTagCount = 3
 local tagCount = 0
--- Fungsi untuk memperbarui daftar pemain yang boleh ditag
-local function updateAllowedPlayers()
-    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
-    if not playerHighlightsFolder then
-        allowedPlayers = {} -- Reset jika folder tidak ditemukan
-        return
-    end
-    allowedPlayers = {} -- Bersihkan daftar sebelumnya
-    for _, child in pairs(playerHighlightsFolder:GetChildren()) do
-        if child:IsA("Model") and Players:FindFirstChild(child.Name) then
-            table.insert(allowedPlayers, child.Name)
-        end
-    end
+local isPaused = false
+
+local function isPlayerValid(targetPlayer)
+    if targetPlayer == LocalPlayer then return false end
+    if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
+    if ignoreDead and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health <= 0 then return false end
+    if teamCheck and targetPlayer.Team == LocalPlayer.Team then return false end
+    return true
 end
 
-local function monitorPlayerHighlights()
-    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
-    if not playerHighlightsFolder then return end
+local function tagClosestPlayer()
+    local closestPlayer, shortestDistance = nil, math.huge
+    local localPosition = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position or nil
+    if not localPosition then return end
 
-    playerHighlightsFolder.ChildAdded:Connect(updateAllowedPlayers)
-    playerHighlightsFolder.ChildRemoved:Connect(updateAllowedPlayers)
-end
-
-updateAllowedPlayers()
-monitorPlayerHighlights()
-
--- Fungsi untuk mengecek apakah pemain berada dalam Field of View (POV)
-local function isInFOV(targetPlayer)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
-
-    local targetCharacter = targetPlayer.Character
-    if not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then return false end
-
-    local cameraPosition = Camera.CFrame.Position
-    local cameraLookVector = Camera.CFrame.LookVector
-    local targetPosition = targetCharacter.HumanoidRootPart.Position
-
-    local directionToTarget = (targetPosition - cameraPosition).Unit
-    local dotProduct = cameraLookVector:Dot(directionToTarget)
-
-    return dotProduct > 0.7
-end
-
-local function isTargetVisible(targetCharacter)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
-    if not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then return false end
-
-    local origin = Camera.CFrame.Position
-    local targetPosition = targetCharacter.HumanoidRootPart.Position
-
-    RaycastParams.FilterDescendantsInstances = {character, Camera}
-    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    
-    local result = workspace:Raycast(origin, (targetPosition - origin).Unit * maxDistance, RaycastParams)
-    return result and result.Instance and result.Instance:IsDescendantOf(targetCharacter)
-end
-
-local function getClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = math.huge
-
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-
-    local localPosition = character.HumanoidRootPart.Position
-
-    for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+    for _, player in pairs(Players:GetPlayers()) do
+        if isPlayerValid(player) then
+            local targetPosition = player.Character.HumanoidRootPart.Position
             local distance = (localPosition - targetPosition).Magnitude
-
-            if distance <= maxDistance and distance < shortestDistance and isTargetVisible(targetPlayer.Character) then
-                closestPlayer = targetPlayer
-                shortestDistance = distance
+            if distance < shortestDistance and distance <= tagAuraRange then
+                closestPlayer, shortestDistance = player, distance
             end
         end
     end
-    return closestPlayer
-end
-
-local function autoFireClosestPlayer()
-    local closestPlayer = getClosestPlayer()
 
     if closestPlayer then
-        task.wait(math.random(50, 200) / 100) -- Menambah jeda lebih acak
-
-        local args = {
-            [1] = closestPlayer.Character.Humanoid,
-            [2] = Vector3.new(-0.33381322026252747, -0.2165726125240326, -0.9174229502677917)
-        }
-
-        game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer"):InvokeServer(unpack(args))
-        
-        tagCount = tagCount + 1
-
-        task.wait(math.random(60, 200) / 100) -- Variasi waktu tagging
-
-        print("✅ Berhasil menandai:", closestPlayer.Name)
-    else
-        print("❌ Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
+        tagPlayerEvent:FireServer(closestPlayer.Character.Humanoid, closestPlayer.Character.HumanoidRootPart.Position)
+        print("✅ Menandai:", closestPlayer.Name)
     end
 end
-local function startAutoTagging()
-    while autotagEnabled do
-        if isPaused or tagCount > 3 then -- Batasi tagging agar tidak mencurigakan
-            task.wait(math.random(2, 5))
-            tagCount = 0
-        else
-            local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
-            local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value or nil
-            local playerRoleObj = LocalPlayer:FindFirstChild("PlayerRole")
-            local myPlayerRole = playerRoleObj and playerRoleObj.Value or ""
 
-            if gamemode == "Voting" or gamemode == "Intermission" then
-                print("⏸️ Auto Tag dihentikan sementara karena mode Voting/Intermission.")
-                isPaused = true
-            elseif myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
-                print("❌ Auto Tag dihentikan sementara karena PlayerRole 'Dead'.")
-                isPaused = true
-            else
-                autoFireClosestPlayer()
+local function tagMultiplePlayers()
+    for _, player in pairs(Players:GetPlayers()) do
+        if isPlayerValid(player) then
+            local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            if distance <= tagAuraRange then
+                tagPlayerEvent:FireServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
+                print("✅ Menandai:", player.Name)
             end
-
-            task.wait(legitTagEnabled and math.random(3, 5) * 0.1 or math.random(6, 20) / 10)
         end
     end
 end
-local function resumeAutoTag()
-    if autotagEnabled and isPaused then
-        task.wait(2)
-        print("▶️ Auto Tag dilanjutkan.")
-        isPaused = false
-    end
-end
 
-local function monitorPlayerRole()
-    local playerRoleObj = LocalPlayer:FindFirstChild("PlayerRole")
-    if playerRoleObj then
-        playerRoleObj:GetPropertyChangedSignal("Value"):Connect(function()
-            if playerRoleObj.Value ~= "Dead" then
-                resumeAutoTag()
+spawn(function()
+    while true do
+        if tagAura then
+            if isPaused or tagCount >= maxTagCount then
+                task.wait(math.random(2, 5)) -- Beri jeda sebelum melanjutkan tagging
+                tagCount = 0
+                isPaused = false
+            else
+                if tagAuraMode == "Closest" then
+                    tagClosestPlayer()
+                elseif tagAuraMode == "Multi Target" then
+                    tagMultiplePlayers()
+                end
+
+                tagCount = tagCount + 1
+                task.wait(math.random(0.5, 2)) -- Tambahkan delay agar lebih natural
             end
-        end)
+        end
+        task.wait(0.1)
     end
-
-    local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
-    if gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") then
-        gamemodeValue.Gamemode:GetPropertyChangedSignal("Value"):Connect(function()
-            if gamemodeValue.Gamemode.Value ~= "Voting" and gamemodeValue.Gamemode.Value ~= "Intermission" then
-                resumeAutoTag()
-            end
-        end)
-    end
-end
-
-local function stopAllTasks()
-    autotagEnabled = false
-    teamCheckEnabled = false
-    legitTagEnabled = false
-    isPaused = false
-end
+end)
 
 local Toggle1 = Tab:CreateToggle({
-    Name = "Auto tag",
+    Name = "Tag Aura",
     CurrentValue = false,
-    Flag = "AutoTagToggle",
+    Flag = "TagAuraToggle",
     Callback = function(Value)
-        autotagEnabled = Value
-        if Value then
-            isPaused = false
-            task.spawn(startAutoTagging)
-        else
-            stopAllTasks()
-        end
+        tagAura = Value
     end
 })
 
 local Toggle2 = Tab:CreateToggle({
-    Name = "Team check",
+    Name = "Ignore Dead",
     CurrentValue = false,
-    Flag = "TeamCheckToggle",
+    Flag = "IgnoreDeadToggle",
     Callback = function(Value)
-        teamCheckEnabled = Value
+        ignoreDead = Value
     end
 })
 
 local Toggle3 = Tab:CreateToggle({
-    Name = "Legit tag",
+    Name = "Team Check",
     CurrentValue = false,
-    Flag = "LegitTagToggle",
+    Flag = "TeamCheckToggle",
     Callback = function(Value)
-        legitTagEnabled = Value
+        teamCheck = Value
     end
 })
-
-monitorPlayerRole()
-updateAllowedPlayers()
 local Section = Tab:CreateSection("Mode tag")
 -- Membuat Button
 local Button = Tab:CreateButton({
