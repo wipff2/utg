@@ -37,84 +37,58 @@ local Tab = Window:CreateTab("Mainz", 4483362458) -- Title, Image
 local Section = Tab:CreateSection("Tagging")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Camera = workspace.Camera
 
 local LocalPlayer = Players.LocalPlayer
-local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
-
 local tagAura = false
 local ignoreDead = false
 local teamCheck = false
-local tagAuraMode = "Closest" -- Bisa diubah menjadi "Multi Target"
-local tagAuraRange = 10
-local maxTagCount = 3
-local tagCount = 0
-local isPaused = false
+local hitboxExpander = false
+local hitboxSize = 5
+local tagAuraMode = "Closest" -- "Closest" atau "Multi Target"
+local tagAuraRange = 15
+local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
 
-local function isPlayerValid(targetPlayer)
-    if targetPlayer == LocalPlayer then return false end
-    if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
-    if ignoreDead and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health <= 0 then return false end
-    if teamCheck and targetPlayer.Team == LocalPlayer.Team then return false end
+-- Fungsi untuk mengecek apakah pemain valid untuk ditandai
+local function isPlayerValid(player)
+    if not player or not player.Character or player == LocalPlayer then return false end
+    if teamCheck and player.Team == LocalPlayer.Team then return false end
+    if ignoreDead and player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead" then return false end
     return true
 end
 
-local function tagClosestPlayer()
-    local closestPlayer, shortestDistance = nil, math.huge
-    local localPosition = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position or nil
-    if not localPosition then return end
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if isPlayerValid(player) then
-            local targetPosition = player.Character.HumanoidRootPart.Position
-            local distance = (localPosition - targetPosition).Magnitude
-            if distance < shortestDistance and distance <= tagAuraRange then
-                closestPlayer, shortestDistance = player, distance
-            end
-        end
-    end
-
-    if closestPlayer then
-        tagPlayerEvent:FireServer(closestPlayer.Character.Humanoid, closestPlayer.Character.HumanoidRootPart.Position)
-        print("✅ Menandai:", closestPlayer.Name)
-    end
-end
-
-local function tagMultiplePlayers()
-    for _, player in pairs(Players:GetPlayers()) do
-        if isPlayerValid(player) then
-            local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-            if distance <= tagAuraRange then
-                tagPlayerEvent:FireServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
-                print("✅ Menandai:", player.Name)
-            end
-        end
-    end
-end
-
+-- Fungsi utama untuk menjalankan Tag Aura
 spawn(function()
     while true do
         if tagAura then
-            if isPaused or tagCount >= maxTagCount then
-                task.wait(math.random(2, 5)) -- Beri jeda sebelum melanjutkan tagging
-                tagCount = 0
-                isPaused = false
-            else
-                if tagAuraMode == "Closest" then
-                    tagClosestPlayer()
-                elseif tagAuraMode == "Multi Target" then
-                    tagMultiplePlayers()
+            if tagAuraMode == "Closest" then
+                local nearestPlayer, shortestDistance = nil, math.huge
+                for _, player in pairs(Players:GetPlayers()) do
+                    if isPlayerValid(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                        if distance < shortestDistance and distance <= tagAuraRange then
+                            nearestPlayer, shortestDistance = player, distance
+                        end
+                    end
                 end
-
-                tagCount = tagCount + 1
-                task.wait(math.random(0.5, 2)) -- Tambahkan delay agar lebih natural
+                if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("Humanoid") then
+                    tagPlayerEvent:InvokeServer(nearestPlayer.Character.Humanoid, nearestPlayer.Character.HumanoidRootPart.Position)
+                end
+            elseif tagAuraMode == "Multi Target" then
+                for _, player in pairs(Players:GetPlayers()) do
+                    if isPlayerValid(player) and player.Character and player.Character:FindFirstChild("Humanoid") then
+                        local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                        if distance <= tagAuraRange then
+                            tagPlayerEvent:InvokeServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
+                        end
+                    end
+                end
             end
         end
-        task.wait(0.1)
+        task.wait(0.5) -- Jeda untuk mencegah spam
     end
 end)
 
+-- UI Toggle untuk Tag Aura
 local Toggle1 = Tab:CreateToggle({
     Name = "Tag Aura",
     CurrentValue = false,
@@ -124,6 +98,7 @@ local Toggle1 = Tab:CreateToggle({
     end
 })
 
+-- UI Toggle untuk mengabaikan pemain mati
 local Toggle2 = Tab:CreateToggle({
     Name = "Ignore Dead",
     CurrentValue = false,
@@ -133,6 +108,7 @@ local Toggle2 = Tab:CreateToggle({
     end
 })
 
+-- UI Toggle untuk Team Check
 local Toggle3 = Tab:CreateToggle({
     Name = "Team Check",
     CurrentValue = false,
@@ -141,6 +117,22 @@ local Toggle3 = Tab:CreateToggle({
         teamCheck = Value
     end
 })
+
+-- UI Toggle untuk memperbesar Hitbox
+local Toggle4 = Tab:CreateToggle({
+    Name = "Hitbox Expander",
+    CurrentValue = false,
+    Flag = "HitboxExpanderToggle",
+    Callback = function(Value)
+        hitboxExpander = Value
+        if Value then
+            hitboxSize = 10 -- Bisa diubah sesuai kebutuhan
+        else
+            hitboxSize = 5
+        end
+    end
+})
+
 local Section = Tab:CreateSection("Mode tag")
 -- Membuat Button
 local Button = Tab:CreateButton({
