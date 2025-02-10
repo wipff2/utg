@@ -132,35 +132,13 @@ end
 
 local function autoFireClosestPlayer()
     local closestPlayer = getClosestPlayer()
-    
-    if closestPlayer then
-        task.wait(math.random(20, 50) / 100)
-        
-        local args = {
-            [1] = closestPlayer.Character.Humanoid,
-            [2] = Vector3.new(0.121, -0.692, -0.710)
-        }
-
-        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
-
-        task.wait(math.random(30, 150) / 100)
-
-        print("✅ Berhasil menandai:", closestPlayer.Name)
-    else
-        print("❌ Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
-    end
-end
-
-local function autoFireClosestPlayer()
-    local closestPlayer = getClosestPlayer()
 
     if closestPlayer then
         task.wait(math.random(50, 200) / 100) -- Menambah jeda lebih acak
 
-        local randomAimOffset = Vector3.new(math.random(-2, 2) / 10, math.random(-2, 2) / 10, math.random(-2, 2) / 10)
         local args = {
             [1] = closestPlayer.Character.Humanoid,
-            [2] = Vector3.new(-0.33381322026252747, -0.2165726125240326, -0.9174229502677917) + randomAimOffset
+            [2] = Vector3.new(-0.33381322026252747, -0.2165726125240326, -0.9174229502677917)
         }
 
         game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer"):InvokeServer(unpack(args))
