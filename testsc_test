@@ -1,1 +1,546 @@
 -- m
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+   Name = "utg Deepmarian hb",
+   Icon = anchor, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Rayfield Interface Suite",
+   LoadingSubtitle = "by Annonmy",
+   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = false,
+      FolderName = Utgsfiles, -- Create a custom folder for your hub/game
+      FileName = "Utgfile"
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+
+local Tab = Window:CreateTab("Mainz", 4483362458) -- Title, Image
+local Section = Tab:CreateSection("Tagging")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Camera = workspace.Camera
+local RaycastParams = RaycastParams.new()
+
+local autotagEnabled = false
+local teamCheckEnabled = false
+local legitTagEnabled = false
+local maxDistance = 6
+local isPaused = false
+
+-- Fungsi untuk memperbarui daftar pemain yang boleh ditag
+local function updateAllowedPlayers()
+    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
+    if not playerHighlightsFolder then
+        allowedPlayers = {} -- Reset jika folder tidak ditemukan
+        return
+    end
+    allowedPlayers = {} -- Bersihkan daftar sebelumnya
+    for _, child in pairs(playerHighlightsFolder:GetChildren()) do
+        if child:IsA("Model") and Players:FindFirstChild(child.Name) then
+            table.insert(allowedPlayers, child.Name)
+        end
+    end
+end
+
+local function monitorPlayerHighlights()
+    local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
+    if not playerHighlightsFolder then return end
+
+    playerHighlightsFolder.ChildAdded:Connect(updateAllowedPlayers)
+    playerHighlightsFolder.ChildRemoved:Connect(updateAllowedPlayers)
+end
+
+updateAllowedPlayers()
+monitorPlayerHighlights()
+
+-- Fungsi untuk mengecek apakah pemain berada dalam Field of View (POV)
+local function isInFOV(targetPlayer)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+
+    local targetCharacter = targetPlayer.Character
+    if not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then return false end
+
+    local cameraPosition = Camera.CFrame.Position
+    local cameraLookVector = Camera.CFrame.LookVector
+    local targetPosition = targetCharacter.HumanoidRootPart.Position
+
+    local directionToTarget = (targetPosition - cameraPosition).Unit
+    local dotProduct = cameraLookVector:Dot(directionToTarget)
+
+    return dotProduct > 0.7
+end
+
+local function isTargetVisible(targetCharacter)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+    if not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then return false end
+
+    local origin = Camera.CFrame.Position
+    local targetPosition = targetCharacter.HumanoidRootPart.Position
+
+    RaycastParams.FilterDescendantsInstances = {character, Camera}
+    RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local result = workspace:Raycast(origin, (targetPosition - origin).Unit * maxDistance, RaycastParams)
+    return result and result.Instance and result.Instance:IsDescendantOf(targetCharacter)
+end
+
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local localPosition = character.HumanoidRootPart.Position
+
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        if targetPlayer ~= LocalPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+            local distance = (localPosition - targetPosition).Magnitude
+
+            if distance <= maxDistance and distance < shortestDistance and isTargetVisible(targetPlayer.Character) then
+                closestPlayer = targetPlayer
+                shortestDistance = distance
+            end
+        end
+    end
+    return closestPlayer
+end
+
+local function autoFireClosestPlayer()
+    local closestPlayer = getClosestPlayer()
+
+    if closestPlayer then
+        task.wait(math.random(20, 50) / 100)
+
+        local args = {
+            [1] = closestPlayer.Character.Humanoid,
+            [2] = Vector3.new(0.121, -0.692, -0.710)
+        }
+
+        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+
+        task.wait(math.random(30, 150) / 100)
+
+        print("✅ Berhasil menandai:", closestPlayer.Name)
+    else
+        print("❌ Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
+    end
+end
+
+local function autoFireClosestPlayer()
+    local closestPlayer = getClosestPlayer()
+
+    if closestPlayer then
+        task.wait(math.random(50, 200) / 100) -- Menambah jeda lebih acak
+
+        simulatePlayerMovement(closestPlayer) -- Simulasikan gerakan sebelum tagging
+
+        local randomAimOffset = Vector3.new(math.random(-2, 2) / 10, math.random(-2, 2) / 10, math.random(-2, 2) / 10)
+        local args = {
+            [1] = closestPlayer.Character.Humanoid,
+            [2] = Vector3.new(0.121, -0.692, -0.710) + randomAimOffset
+        }
+
+        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+
+        tagCount = tagCount + 1
+
+        task.wait(math.random(60, 200) / 100) -- Variasi waktu tagging
+
+        print("✅ Berhasil menandai:", closestPlayer.Name)
+    else
+        print("❌ Tidak ada pemain dalam FOV atau jarak yang bisa ditandai.")
+    end
+end
+local function startAutoTagging()
+    while autotagEnabled do
+        if isPaused or tagCount > 5 then -- Batasi tagging agar tidak mencurigakan
+            task.wait(math.random(2, 5))
+            tagCount = 0
+        else
+            local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
+            local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
+            local playerRoleObj = LocalPlayer:FindFirstChild("PlayerRole")
+            local myPlayerRole = playerRoleObj and playerRoleObj.Value or ""
+
+            if gamemode == "Voting" or gamemode == "Intermission" then
+                print("⏸️ Auto Tag dihentikan sementara karena mode Voting/Intermission.")
+                isPaused = true
+            elseif myPlayerRole == "Dead" and not (gamemode == "Chaos" or gamemode == "Crown" or gamemode == "SoloCrown") then
+                print("❌ Auto Tag dihentikan sementara karena PlayerRole 'Dead'.")
+                isPaused = true
+            else
+                autoFireClosestPlayer()
+            end
+
+            task.wait(legitTagEnabled and math.random(3, 5) * 0.1 or math.random(6, 20) / 10)
+        end
+    end
+end
+local function resumeAutoTag()
+    if autotagEnabled and isPaused then
+        task.wait(2)
+        print("▶️ Auto Tag dilanjutkan.")
+        isPaused = false
+    end
+end
+
+local function monitorPlayerRole()
+    local playerRoleObj = LocalPlayer:FindFirstChild("PlayerRole")
+    if playerRoleObj then
+        playerRoleObj:GetPropertyChangedSignal("Value"):Connect(function()
+            if playerRoleObj.Value ~= "Dead" then
+                resumeAutoTag()
+            end
+        end)
+    end
+
+    local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
+    if gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") then
+        gamemodeValue.Gamemode:GetPropertyChangedSignal("Value"):Connect(function()
+            if gamemodeValue.Gamemode.Value ~= "Voting" and gamemodeValue.Gamemode.Value ~= "Intermission" then
+                resumeAutoTag()
+            end
+        end)
+    end
+end
+
+local function stopAllTasks()
+    autotagEnabled = false
+    teamCheckEnabled = false
+    legitTagEnabled = false
+    isPaused = false
+end
+
+local Toggle1 = Tab:CreateToggle({
+    Name = "Auto tag",
+    CurrentValue = false,
+    Flag = "AutoTagToggle",
+    Callback = function(Value)
+        autotagEnabled = Value
+        if Value then
+            isPaused = false
+            task.spawn(startAutoTagging)
+        else
+            stopAllTasks()
+        end
+    end
+})
+
+local Toggle2 = Tab:CreateToggle({
+    Name = "Team check",
+    CurrentValue = false,
+    Flag = "TeamCheckToggle",
+    Callback = function(Value)
+        teamCheckEnabled = Value
+    end
+})
+
+local Toggle3 = Tab:CreateToggle({
+    Name = "Legit tag",
+    CurrentValue = false,
+    Flag = "LegitTagToggle",
+    Callback = function(Value)
+        legitTagEnabled = Value
+    end
+})
+
+monitorPlayerRole()
+updateAllowedPlayers()
+local Section = Tab:CreateSection("Mode tag")
+-- Membuat Button
+local Button = Tab:CreateButton({
+   Name = "fast tag (can't turn off)",
+   Callback = function()
+      loadstring(game:HttpGet('https://raw.githubusercontent.com/wipff2/utg/refs/heads/main/fast%20tag'))()
+   end,
+})
+
+local Section = Tab:CreateSection("Hitbox")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local rootSizeEnabled = false -- Toggle utama
+local humanoidRootPartSize = Vector3.new(2, 2, 1) -- Ukuran default
+local humanoidRootPartTransparency = 0 -- Transparansi default
+local humanoidRootPartMaterial = Enum.Material.SmoothPlastic -- Material default
+local noGhostEnabled = false -- Toggle untuk No Ghost
+local teamCheckEnabled = false -- Toggle untuk Team Check
+local rainbowEnabled = true -- Toggle untuk warna pelangi
+
+-- Function untuk membuat warna pelangi (rainbow)
+local function getRainbowColor()
+    local t = tick() % 5 -- Menghasilkan angka dari 0 sampai 5
+    local hue = t / 5 -- Konversi ke rentang 0-1 untuk HSV
+    local color = Color3.fromHSV(hue, 1, 1) -- Konversi HSV ke RGB
+    return color
+end
+
+-- Function untuk mengatur ukuran, material, transparansi, dan warna HumanoidRootPart
+local function updateHumanoidRootPart(character)
+    if not rootSizeEnabled then return end -- Jika toggle false, hentikan fungsi
+
+    local player = Players:GetPlayerFromCharacter(character)
+    if not player then return end -- Jika tidak ada pemain, hentikan
+
+    local playerRole = player:FindFirstChild("PlayerRole")
+    local localRole = LocalPlayer:FindFirstChild("PlayerRole")
+
+    -- Abaikan jika noGhostEnabled aktif dan PlayerRole = "Dead"
+    if noGhostEnabled and playerRole and playerRole.Value == "Dead" then
+        return
+    end
+
+    -- Abaikan jika teamCheckEnabled aktif dan PlayerRole sama
+    if teamCheckEnabled and localRole and playerRole and localRole.Value == playerRole.Value then
+        return
+    end
+
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        rootPart.Size = humanoidRootPartSize -- Terapkan ukuran
+        rootPart.Transparency = humanoidRootPartTransparency -- Terapkan transparansi
+        rootPart.Material = humanoidRootPartMaterial -- Terapkan material
+
+        -- Terapkan warna pelangi jika PlayerRole adalah "Neutral"
+        if rainbowEnabled and playerRole and playerRole.Value == "Neutral" then
+            task.spawn(function()
+                while rootSizeEnabled and playerRole.Value == "Neutral" do
+                    rootPart.Color = getRainbowColor() -- Terapkan warna pelangi
+                    task.wait(0.1) -- Perbarui warna setiap 0.1 detik
+                end
+            end)
+        else
+            rootPart.Color = Color3.new(1, 1, 1) -- Reset ke warna putih
+        end
+    end
+end
+
+-- Function untuk menghapus hitbox dari karakter
+local function removeHitbox(character)
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        rootPart.Size = Vector3.new(2, 2, 1) -- Reset ukuran ke default
+        rootPart.Transparency = 0 -- Reset transparansi ke default
+        rootPart.Material = Enum.Material.SmoothPlastic -- Reset material ke default
+        rootPart.Color = Color3.new(1, 1, 1) -- Reset warna ke putih
+    end
+end
+
+-- Function untuk memantau perubahan PlayerRole
+local function monitorPlayerRole(player)
+    if player == LocalPlayer then return end -- Abaikan pemain lokal
+
+    local function onRoleChanged()
+        if player.Character then
+            local playerRole = player:FindFirstChild("PlayerRole")
+            if playerRole and playerRole.Value == "Dead" or (teamCheckEnabled and LocalPlayer:FindFirstChild("PlayerRole") and LocalPlayer.PlayerRole.Value == playerRole.Value) then
+                removeHitbox(player.Character) -- Hapus hitbox jika kondisi terpenuhi
+            else
+                updateHumanoidRootPart(player.Character) -- Perbarui hitbox jika kondisi tidak terpenuhi
+            end
+        end
+    end
+
+    -- Pantau perubahan nilai PlayerRole
+    local playerRole = player:FindFirstChild("PlayerRole")
+    if playerRole then
+        playerRole:GetPropertyChangedSignal("Value"):Connect(onRoleChanged)
+        onRoleChanged() -- Terapkan perubahan awal
+    else
+        -- Tunggu hingga PlayerRole muncul
+        player.ChildAdded:Connect(function(child)
+            if child.Name == "PlayerRole" then
+                child:GetPropertyChangedSignal("Value"):Connect(onRoleChanged)
+                onRoleChanged() -- Terapkan perubahan awal
+            end
+        end)
+    end
+end
+
+-- Function untuk memantau karakter pemain
+local function onCharacterAdded(character)
+    if character == LocalPlayer.Character then return end -- Abaikan pemain lokal
+    character:WaitForChild("Humanoid") -- Tunggu hingga karakter sepenuhnya dimuat
+    updateHumanoidRootPart(character) -- Terapkan pengaturan awal
+
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        monitorPlayerRole(player) -- Pantau perubahan PlayerRole pemain
+    end
+end
+
+-- Function untuk memantau pemain baru
+local function onPlayerAdded(player)
+    if player == LocalPlayer then return end -- Abaikan pemain lokal
+
+    player.CharacterAdded:Connect(onCharacterAdded) -- Pantau karakter baru pemain
+    if player.Character then
+        onCharacterAdded(player.Character) -- Jika karakter sudah ada, atur ukurannya
+    end
+
+    monitorPlayerRole(player) -- Pantau perubahan PlayerRole
+end
+
+-- Pantau semua pemain saat ini
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        onPlayerAdded(player) -- Atur listener untuk setiap pemain yang sudah ada
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- Reset semua hitbox saat toggle dinonaktifkan
+local function resetRootParts()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player ~= LocalPlayer then
+            removeHitbox(player.Character)
+        end
+    end
+end
+
+-- Function untuk mengaktifkan/menonaktifkan rootSizeEnabled
+local function toggleRootSize(value)
+    rootSizeEnabled = value
+    if not value then
+        resetRootParts() -- Reset semua hitbox saat toggle dimatikan
+    else
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character and player ~= LocalPlayer then
+                updateHumanoidRootPart(player.Character) -- Perbarui hitbox saat toggle diaktifkan
+            end
+        end
+    end
+end
+local function updateAllHitboxes()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player ~= LocalPlayer then
+            updateHumanoidRootPart(player.Character)
+        end
+    end
+end
+-- GUI Toggles
+local Toggle = Tab:CreateToggle({
+    Name = "Enable Hitbox",
+    CurrentValue = false,
+    Flag = "EnableHitboxToggle",
+    Callback = function(value)
+        toggleRootSize(value)
+    end
+})
+
+-- Slider untuk mengatur ukuran hitbox
+local Slider = Tab:CreateSlider({
+    Name = "Size",
+    Range = {3, 15},
+    Increment = 0.5,
+    CurrentValue = 2,
+    Flag = "SizeSlider",
+    Callback = function(value)
+        humanoidRootPartSize = Vector3.new(value, value, value)
+        if rootSizeEnabled then
+            updateAllHitboxes() -- Perbarui semua hitbox saat ukuran diubah
+        end
+    end
+})
+
+-- Slider untuk mengatur transparansi hitbox
+local TransparencySlider = Tab:CreateSlider({
+    Name = "Transparency",
+    Range = {0, 1},
+    Increment = 0.1,
+    CurrentValue = 0,
+    Flag = "TransparencySlider",
+    Callback = function(value)
+        humanoidRootPartTransparency = value
+        if rootSizeEnabled then
+            updateAllHitboxes() -- Perbarui semua hitbox saat transparansi diubah
+        end
+    end
+})
+
+-- Dropdown untuk memilih material hitbox
+local Dropdown = Tab:CreateDropdown({
+    Name = "Material",
+    Options = {"SmoothPlastic", "Neon", "ForceField", "Glass", "Wood"},
+    CurrentOption = {"SmoothPlastic"},
+    MultipleOptions = false,
+    Flag = "MaterialDropdown",
+    Callback = function(option)
+        humanoidRootPartMaterial = Enum.Material[option[1]]
+        if rootSizeEnabled then
+            updateAllHitboxes() -- Perbarui semua hitbox saat material diubah
+        end
+    end
+})
+
+-- Toggle untuk No Ghost
+local NoGhostToggle = Tab:CreateToggle({
+    Name = "No Ghost",
+    CurrentValue = false,
+    Flag = "NoGhostToggle",
+    Callback = function(value)
+        noGhostEnabled = value
+        if rootSizeEnabled then
+            updateAllHitboxes() -- Perbarui semua hitbox saat No Ghost diubah
+        end
+    end
+})
+
+-- Toggle untuk Team Check
+local TeamCheckToggle = Tab:CreateToggle({
+    Name = "Team Check",
+    CurrentValue = false,
+    Flag = "TeamCheckToggle",
+    Callback = function(value)
+        teamCheckEnabled = value
+        if rootSizeEnabled then
+            updateAllHitboxes() -- Perbarui semua hitbox saat Team Check diubah
+        end
+    end
+})
+local Section = Tab:CreateSection("Esp")
+local Tab = Window:CreateTab("Player", 4483362458) -- Title, Image
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local Input = Tab:CreateInput({
+    Name = "Set Speed",
+    CurrentValue = "",
+    PlaceholderText = "Type 'speed <value>' and press Enter",
+    RemoveTextAfterFocusLost = false,
+    Flag = "InputSpeed",
+    Callback = function(Text)
+        -- Memeriksa apakah input dimulai dengan "speed"
+        if Text:lower():sub(1, 5) == "speed" then
+            -- Mengambil nilai kecepatan dari input
+            local speedValue = tonumber(Text:sub(7))
+            if speedValue then
+                -- Mengatur kecepatan Humanoid
+      
