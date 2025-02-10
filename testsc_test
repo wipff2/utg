@@ -41,17 +41,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local tagAura = false
 local ignoreDead = false
-local teamCheck = false
-local hitboxExpander = false
-local hitboxSize = 5
-local tagAuraMode = "Closest" -- "Closest" atau "Multi Target"
-local tagAuraRange = 15
+local tagAuraMode = "Closest" -- Default Mode
+local tagAuraRange = 15 -- Default Range
 local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
 
 -- Fungsi untuk mengecek apakah pemain valid untuk ditandai
 local function isPlayerValid(player)
     if not player or not player.Character or player == LocalPlayer then return false end
-    if teamCheck and player.Team == LocalPlayer.Team then return false end
     if ignoreDead and player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead" then return false end
     return true
 end
@@ -108,29 +104,29 @@ local Toggle2 = Tab:CreateToggle({
     end
 })
 
--- UI Toggle untuk Team Check
-local Toggle3 = Tab:CreateToggle({
-    Name = "Team Check",
-    CurrentValue = false,
-    Flag = "TeamCheckToggle",
-    Callback = function(Value)
-        teamCheck = Value
-    end
+-- UI Dropdown untuk memilih mode Tag Aura
+local Dropdown = Tab:CreateDropdown({
+    Name = "Tag Aura Mode",
+    Options = {"Closest", "Multi Target"},
+    CurrentOption = {"Closest"},
+    MultipleOptions = false,
+    Flag = "TagAuraModeDropdown",
+    Callback = function(Options)
+        tagAuraMode = Options[1]
+    end,
 })
 
--- UI Toggle untuk memperbesar Hitbox
-local Toggle4 = Tab:CreateToggle({
-    Name = "Hitbox Expander",
-    CurrentValue = false,
-    Flag = "HitboxExpanderToggle",
+-- UI Slider untuk mengatur range Tag Aura
+local Slider = Tab:CreateSlider({
+    Name = "Tag Aura Range",
+    Range = {5, 50},
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = 15,
+    Flag = "TagAuraRangeSlider",
     Callback = function(Value)
-        hitboxExpander = Value
-        if Value then
-            hitboxSize = 10 -- Bisa diubah sesuai kebutuhan
-        else
-            hitboxSize = 5
-        end
-    end
+        tagAuraRange = Value
+    end,
 })
 
 local Section = Tab:CreateSection("Mode tag")
