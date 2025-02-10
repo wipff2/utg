@@ -66,12 +66,14 @@ local function lookAtPlayer(target)
     end
 end
 
-lookAtPlayer = naturalLookAt
 local function randomWait(min, max)
     local randomTime = math.random(min, max)
     task.wait(randomTime)
 end
-
+local function randomWait(min, max)
+       local randomTime = math.random(min, max)
+       task.wait(randomTime)
+   end
 spawn(function()
     while true do
         if tagAura then
