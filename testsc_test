@@ -47,7 +47,7 @@ local teamCheckEnabled = false
 local legitTagEnabled = false
 local maxDistance = 6
 local isPaused = false
-
+local tagCount = 0
 -- Fungsi untuk memperbarui daftar pemain yang boleh ditag
 local function updateAllowedPlayers()
     local playerHighlightsFolder = workspace:FindFirstChild("PlayerHighlights")
@@ -183,7 +183,7 @@ local function startAutoTagging()
             tagCount = 0
         else
             local gamemodeValue = ReplicatedStorage:FindFirstChild("Values")
-            local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value
+            local gamemode = gamemodeValue and gamemodeValue:FindFirstChild("Gamemode") and gamemodeValue.Gamemode.Value or nil
             local playerRoleObj = LocalPlayer:FindFirstChild("PlayerRole")
             local myPlayerRole = playerRoleObj and playerRoleObj.Value or ""
 
