@@ -56,15 +56,22 @@ local function isPlayerValid(player)
     return true
 end
 
--- Fungsi untuk mengarahkan kamera ke target (hanya jika target baru)
 local function lookAtPlayer(target)
-    if target and target ~= lastLookTarget and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
-        lastLookTarget = target -- Simpan pemain yang baru saja ditarget
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local startTime = os.time()
+        while os.time() - startTime < 1 do -- Gerakkan kamera selama 1 detik
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position), 0.1)
+            task.wait(0.05)
+        end
     end
 end
 
--- Fungsi utama untuk menjalankan Tag Aura
+lookAtPlayer = naturalLookAt
+local function randomWait(min, max)
+    local randomTime = math.random(min, max)
+    task.wait(randomTime)
+end
+
 spawn(function()
     while true do
         if tagAura then
@@ -94,7 +101,7 @@ spawn(function()
                 end
             end
         end
-        task.wait(0.5) -- Jeda untuk mencegah spam
+        randomwait(0.3, 0.7)
     end
 end)
 
