@@ -157,8 +157,6 @@ local function autoFireClosestPlayer()
     if closestPlayer then
         task.wait(math.random(50, 200) / 100) -- Menambah jeda lebih acak
 
-        simulatePlayerMovement(closestPlayer) -- Simulasikan gerakan sebelum tagging
-
         local randomAimOffset = Vector3.new(math.random(-2, 2) / 10, math.random(-2, 2) / 10, math.random(-2, 2) / 10)
         local args = {
             [1] = closestPlayer.Character.Humanoid,
