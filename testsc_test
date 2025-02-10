@@ -178,7 +178,7 @@ local function autoFireClosestPlayer()
 end
 local function startAutoTagging()
     while autotagEnabled do
-        if isPaused or tagCount > 5 then -- Batasi tagging agar tidak mencurigakan
+        if isPaused or tagCount > 3 then -- Batasi tagging agar tidak mencurigakan
             task.wait(math.random(2, 5))
             tagCount = 0
         else
