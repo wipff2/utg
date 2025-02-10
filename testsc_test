@@ -163,7 +163,7 @@ local function autoFireClosestPlayer()
             [2] = Vector3.new(-0.33381322026252747, -0.2165726125240326, -0.9174229502677917) + randomAimOffset
         }
 
-        ReplicatedStorage.Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+        game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer"):InvokeServer(unpack(args))
         
         tagCount = tagCount + 1
 
