@@ -52,12 +52,11 @@ Tab:CreateButton({
 local tagAura = false
 local ignoreDead = false
 local teamCheck = false
-local hitboxExpander = false
-local hitboxSize = 5
 local tagAuraMode = "Closest"
 local tagAuraRange = 15
+local tagCooldowns = {}
 
-local Section = Tab:CreateSection("Main",false)
+local Section = Tab:CreateSection("Main", false)
 
 Tab:CreateToggle({
     Name = "Tag Aura",
@@ -123,31 +122,6 @@ Tab:CreateToggle({
     end
 })
 
-Tab:CreateToggle({
-    Name = "Hitbox Expander",
-    Info = {
-        Title = "Hitbox Expander",
-        Image = "rbxassetid://12735851647",
-        Description = "Changes The Hitboxes of other players 3 stars?",
-    },
-    CurrentValue = false,
-    Flag = "HitboxExpander",
-    Callback = function(Value)
-        hitboxExpander = Value
-    end
-})
-
-Tab:CreateSlider({
-    Name = "Hitbox Size",
-    Range = {0, 20},
-    Increment = 1,
-    CurrentValue = 5,
-    Flag = "HitboxSize",
-    Callback = function(Value)
-        hitboxSize = Value
-    end,
-})
-
 local players = game:GetService("Players")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local tagPlayerEvent = replicatedStorage.Events.game.tags.TagPlayer
@@ -163,66 +137,36 @@ local function isPlayerValid(player)
     return true
 end
 
-local function applyHitbox(player, size)
-    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local humanoidRootPart = player.Character.HumanoidRootPart
-        humanoidRootPart.Size = Vector3.new(size, size, size)
-        humanoidRootPart.Transparency = 0.5
-        humanoidRootPart.CanCollide = false
-    end
-end
-
-local function resetHitbox(player)
-    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local humanoidRootPart = player.Character.HumanoidRootPart
-        humanoidRootPart.Size = Vector3.new(2, 2, 1)
-        humanoidRootPart.Transparency = 1
-        humanoidRootPart.CanCollide = true
-    end
-end
-
 spawn(function()
     while true do
         if tagAura then
+            local currentTime = tick()
             if tagAuraMode == "Closest" then
                 local nearestPlayer, shortestDistance = nil, math.huge
                 for _, player in pairs(players:GetPlayers()) do
                     if player ~= players.LocalPlayer and isPlayerValid(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                         local distance = (player.Character.HumanoidRootPart.Position - players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if distance < shortestDistance and distance <= tagAuraRange then
+                        if distance < shortestDistance and distance <= tagAuraRange and (not tagCooldowns[player] or currentTime - tagCooldowns[player] > 1) then
                             nearestPlayer, shortestDistance = player, distance
                         end
                     end
                 end
                 if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("HumanoidRootPart") and nearestPlayer.Character:FindFirstChild("Humanoid") then
                     tagPlayerEvent:InvokeServer(nearestPlayer.Character.Humanoid, nearestPlayer.Character.HumanoidRootPart.Position)
+                    tagCooldowns[nearestPlayer] = currentTime
                 end
             elseif tagAuraMode == "Multi Target" then
                 for _, player in pairs(players:GetPlayers()) do
                     if player ~= players.LocalPlayer and isPlayerValid(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
                         local distance = (player.Character.HumanoidRootPart.Position - players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if distance <= tagAuraRange then
+                        if distance <= tagAuraRange and (not tagCooldowns[player] or currentTime - tagCooldowns[player] > 1) then
                             tagPlayerEvent:InvokeServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
+                            tagCooldowns[player] = currentTime
                         end
                     end
                 end
             end
         end
-
-        if hitboxExpander then
-            for _, player in pairs(players:GetPlayers()) do
-                if player ~= players.LocalPlayer and isPlayerValid(player) then
-                    applyHitbox(player, hitboxSize)
-                else
-                    resetHitbox(player)
-                end
-            end
-        else
-            for _, player in pairs(players:GetPlayers()) do
-                resetHitbox(player)
-            end
-        end
-
         task.wait()
     end
 end)
