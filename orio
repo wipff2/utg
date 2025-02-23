@@ -40,6 +40,19 @@ function tagplr(targetPlayer)
             [2] = tagPosition
         }
         game:GetService("ReplicatedStorage").Events.game.tags.TagPlayer:InvokeServer(unpack(args))
+        task.wait(1) -- Delay 1 detik setelah tag
+    end
+end
+
+-- Fungsi untuk auto M1 (klik kiri otomatis)
+function autoM1(targetPlayer)
+    local character = targetPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local hitbox = character:FindFirstChild("HumanoidRootPart") -- Menggunakan HumanoidRootPart sebagai hitbox
+        if hitbox then
+            -- Kirim permintaan klik ke server
+            game:GetService("ReplicatedStorage").Events.game.attack.AttackPlayer:FireServer(hitbox)
+        end
     end
 end
 
@@ -115,7 +128,6 @@ function getClosestPlayerInFront()
     return closestPlayer
 end
 
--- Toggle untuk Auto Tag
 Tab:AddToggle({
     Name = "Auto tag",
     Default = false,
@@ -125,7 +137,7 @@ Tab:AddToggle({
             task.spawn(function()
                 while autotagEnabled do
                     if shouldStopAutoTag() then
-                        print("Auto tag pausedw")
+                        print("Auto tag paused")
                         task.wait(1) -- Tunggu sebelum mengecek ulang
                     else
                         task.wait(legitTagEnabled and math.random(4, 40) * 0.1 or 0.1) -- Delay antara 0.4 sampai 4 jika Legit Tag aktif
@@ -136,6 +148,7 @@ Tab:AddToggle({
                             end
                             tagplr(closestPlayer) -- Lakukan tagging
                             autoM1(closestPlayer) -- Lakukan auto M1
+                            task.wait(1) -- Delay 1 detik setelah tag sebelum lanjut ke pemain lain
                         end
                     end
                 end
