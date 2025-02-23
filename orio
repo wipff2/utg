@@ -178,13 +178,6 @@ Tab:AddToggle({
         print("Legit Tag: " .. tostring(Value))
     end    
 })
-Tab:AddToggle({
-	Name = "Auto get coin",
-	Default = false,
-	Callback = function(Value)
-		print(Value)
-	end    
-})
 local Section = Tab:AddSection({
 	Name = "Hitbox"
 })

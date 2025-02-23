@@ -38,16 +38,17 @@ local Section = Tab:CreateSection("Tagging")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.Camera
+local Camera = Workspace.CurrentCamera -- Menggunakan CurrentCamera agar kompatibel di LocalScripts
 local tagAura = false
 local ignoreDead = false
 local tagAuraMode = "Closest" -- Default Mode
 local tagAuraRange = 5 -- Default Range
 local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
-
-local lastLookTarget = nil -- Menyimpan pemain terakhir yang ditarget kamera
+local gamemode = ReplicatedStorage:WaitForChild("Values"):WaitForChild("Gamemode") -- Sesuai struktur error sebelumnya
+local tagAnimation = ReplicatedStorage:WaitForChild("Animations"):WaitForChild("Base"):WaitForChild("Tag1") -- Animasi Tag1
 
 -- Fungsi untuk mengecek apakah pemain valid untuk ditandai
 local function isPlayerValid(player)
@@ -56,58 +57,88 @@ local function isPlayerValid(player)
     return true
 end
 
-local function lookAtPlayer(target)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        local startTime = os.time()
-        while os.time() - startTime < 1 do -- Gerakkan kamera selama 1 detik
-            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position), 0.1)
-            task.wait(0.05)
+-- Fungsi untuk memainkan animasi Tag1 pada karakter
+local function playTagAnimation(player)
+    if player and player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            local animator = humanoid:FindFirstChildOfClass("Animator")
+            if not animator then
+                animator = Instance.new("Animator")
+                animator.Parent = humanoid
+            end
+
+            local animationTrack = animator:LoadAnimation(tagAnimation) -- Memuat animasi
+            animationTrack:Play() -- Memutar animasi
         end
     end
 end
 
-local function randomWait(min, max)
-    local randomTime = math.random(min, max)
-    task.wait(randomTime)
+-- Fungsi untuk membuat kamera melihat ke pemain target dengan interpolasi halus
+local function lookAtPlayer(target)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPosition = target.Character.HumanoidRootPart.Position
+        local startTime = tick()
+        local duration = 0.4  -- Durasi animasi dalam detik
+
+        task.spawn(function()
+            while tick() - startTime < duration do
+                local alpha = (tick() - startTime) / duration  -- Nilai interpolasi dari 0 ke 1
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, targetPosition), alpha * 0.2)
+                RunService.RenderStepped:Wait()  -- Sinkronisasi dengan frame rendering
+            end
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
+        end)
+    end
 end
+
+-- Fungsi untuk memberikan jeda acak antara tindakan
 local function randomWait(min, max)
-       local randomTime = math.random(min, max)
-       task.wait(randomTime)
-   end
-spawn(function()
+    task.wait(math.random(min, max))
+end
+
+-- Loop utama untuk menjalankan Tag Aura
+task.spawn(function()
     while true do
-        if tagAura then
-            if tagAuraMode == "Closest" then
-                local nearestPlayer, shortestDistance = nil, math.huge
-                for _, player in pairs(Players:GetPlayers()) do
-                    if isPlayerValid(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if distance < shortestDistance and distance <= tagAuraRange then
-                            nearestPlayer, shortestDistance = player, distance
+        -- Cek apakah gamemode adalah "Intermission" atau "Voting"
+        if gamemode.Value == "Intermission" or gamemode.Value == "Voting" then
+            task.wait(1) -- Tunggu 1 detik sebelum mengecek lagi
+        else
+            if tagAura then
+                if tagAuraMode == "Closest" then
+                    local nearestPlayer, shortestDistance = nil, math.huge
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if isPlayerValid(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                            if distance < shortestDistance and distance <= tagAuraRange then
+                                nearestPlayer, shortestDistance = player, distance
+                            end
                         end
                     end
-                end
-                if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("Humanoid") then
-                    tagPlayerEvent:InvokeServer(nearestPlayer.Character.Humanoid, nearestPlayer.Character.HumanoidRootPart.Position)
-                    lookAtPlayer(nearestPlayer) -- Kamera hanya look sekali per target
-                end
-            elseif tagAuraMode == "Multi Target" then
-                for _, player in pairs(Players:GetPlayers()) do
-                    if isPlayerValid(player) and player.Character and player.Character:FindFirstChild("Humanoid") then
-                        local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if distance <= tagAuraRange then
-                            tagPlayerEvent:InvokeServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
-                            lookAtPlayer(player) -- Kamera hanya look sekali per pemain yang ditandai
+                    if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("Humanoid") then
+                        tagPlayerEvent:InvokeServer(nearestPlayer.Character.Humanoid, nearestPlayer.Character.HumanoidRootPart.Position)
+                        playTagAnimation(LocalPlayer) -- Mainkan animasi saat melakukan tag
+                        lookAtPlayer(nearestPlayer)
+                    end
+                elseif tagAuraMode == "Multi Target" then
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if isPlayerValid(player) and player.Character and player.Character:FindFirstChild("Humanoid") then
+                            local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                            if distance <= tagAuraRange then
+                                tagPlayerEvent:InvokeServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
+                                playTagAnimation(LocalPlayer) -- Mainkan animasi saat melakukan tag
+                                lookAtPlayer(player)
+                            end
                         end
                     end
                 end
             end
+            randomWait(0.6, 1)
         end
-        randomwait(0.3, 0.7)
     end
 end)
 
--- UI Toggle untuk Tag Aura
+-- UI Toggle untuk mengaktifkan/mematikan Tag Aura
 local Toggle1 = Tab:CreateToggle({
     Name = "Tag Aura",
     CurrentValue = false,
@@ -139,13 +170,13 @@ local Dropdown = Tab:CreateDropdown({
     end,
 })
 
--- UI Slider untuk mengatur range Tag Aura
+-- UI Slider untuk mengatur jangkauan Tag Aura
 local Slider = Tab:CreateSlider({
     Name = "Tag Aura Range",
     Range = {1, 10},
     Increment = 1,
     Suffix = " studs",
-    CurrentValue = 15,
+    CurrentValue = 5,
     Flag = "TagAuraRangeSlider",
     Callback = function(Value)
         tagAuraRange = Value
@@ -157,7 +188,7 @@ local Section = Tab:CreateSection("Mode tag")
 local Button = Tab:CreateButton({
    Name = "fast tag (can't turn off)",
    Callback = function()
-      loadstring(game:HttpGet('https://raw.githubusercontent.com/wipff2/utg/refs/heads/main/fast%20tag'))()
+      loadstring(game:HttpGet('https://raw.githubusercontent.com/wipff2/utg/refs/heads/main/fast%20tag.lua'))()
    end,
 })
 
