@@ -85,9 +85,9 @@ Tab:CreateDropdown({
 
 Tab:CreateSlider({
     Name = "Tag Aura Range",
-    Range = {0, 20},
+    Range = {0, 15},
     Increment = 1,
-    CurrentValue = 15,
+    CurrentValue = 10,
     Flag = "TagAuraRange",
     Callback = function(Value)
         tagAuraRange = Value
