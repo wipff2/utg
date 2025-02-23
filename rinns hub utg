@@ -125,6 +125,7 @@ Tab:CreateToggle({
 local players = game:GetService("Players")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local tagPlayerEvent = replicatedStorage.Events.game.tags.TagPlayer
+local animations = replicatedStorage.Animations.Base
 
 local function isPlayerValid(player)
     if not player.Character then return false end
@@ -135,6 +136,17 @@ local function isPlayerValid(player)
         return false
     end
     return true
+end
+
+local function playRandomTagAnimation()
+    local character = players.LocalPlayer.Character
+    if character and character:FindFirstChild("Humanoid") then
+        local humanoid = character.Humanoid
+        local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
+        local animation = math.random(1, 2) == 1 and animations.Tag1 or animations.Tag2
+        local animTrack = animator:LoadAnimation(animation)
+        animTrack:Play()
+    end
 end
 
 spawn(function()
@@ -154,6 +166,8 @@ spawn(function()
                 if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("HumanoidRootPart") and nearestPlayer.Character:FindFirstChild("Humanoid") then
                     tagPlayerEvent:InvokeServer(nearestPlayer.Character.Humanoid, nearestPlayer.Character.HumanoidRootPart.Position)
                     tagCooldowns[nearestPlayer] = currentTime
+                    playRandomTagAnimation()
+                    print("Tagged", nearestPlayer.Name)
                 end
             elseif tagAuraMode == "Multi Target" then
                 for _, player in pairs(players:GetPlayers()) do
@@ -162,6 +176,8 @@ spawn(function()
                         if distance <= tagAuraRange and (not tagCooldowns[player] or currentTime - tagCooldowns[player] > 1) then
                             tagPlayerEvent:InvokeServer(player.Character.Humanoid, player.Character.HumanoidRootPart.Position)
                             tagCooldowns[player] = currentTime
+                            playRandomTagAnimation()
+                            print("Tagged", player.Name)
                         end
                     end
                 end
