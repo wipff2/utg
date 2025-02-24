@@ -37,29 +37,41 @@ local Tab = Window:CreateTab("Main Tab", 4483362458) -- Title, Image
 
 
 Tab:CreateButton({
-    Name = "Copy Discord Link",
+    Name = "Copy Link Discord",
     Info = {
         Title = 'Copy Discord Link',
-        Description = 'Copys our discord server link to your clipboard',
+        Description = 'copy discord link to clipboard ',
     },
     Interact = 'Changable',
     Callback = function()
-        setclipboard('https://discord.gg/VudXCDCaBN') 
+        setclipboard('https://discord.gg/gewBfTSm') 
+        print('Www')              
+    end,
+})
+Tab:CreateButton({
+    Name = "Copy Loader/Loadstring",
+    Info = {
+        Title = 'Copy Loadstring',
+        Description = 'copy Loadstring to clipboard',
+    },
+    Interact = 'Changable',
+    Callback = function()
+        setclipboard('https://discord.gg/gewBfTSm') 
         print('Www')              
     end,
 })
 
-local tagAura = false local ignoreDead = false local teamCheck = false local tagAuraMode = "Closest" local tagAuraRange = 15 local tagCooldowns = {}
+local tagAura = false local ignoreDead = false local teamCheck = false local tagAuraMode = {"Closest"} local tagAuraRange = 15 local tagCooldowns = {}
 
-Tab:CreateToggle({ Name = "Tag Aura", Info = { Title = "Tag Aura", Image = "rbxassetid://12735851647", Description = "Auto Tags People For you best tag aura frr", }, CurrentValue = false, Flag = "TagAura", Callback = function(Value) tagAura = Value end })
+local ToggleTagAura = Tab:CreateToggle({ Name = "Tag Auto", CurrentValue = false, Flag = "TagAura", Callback = function(Value) tagAura = Value end, })
 
-Tab:CreateDropdown({ Name = "Tag Aura Mode", Options = {"Closest", "Multi Target"}, CurrentOption = "Closest", MultiSelection = false, Flag = "TagAuraMode", Callback = function(Option) tagAuraMode = Option end })
+local DropdownTagAuraMode = Tab:CreateDropdown({ Name = "Tag Mode", Options = {"Closest", "Multi Target"}, CurrentOption = {"Closest"}, MultipleOptions = false, Flag = "TagAuraMode", Callback = function(Option) tagAuraMode = Option end, })
 
-Tab:CreateSlider({ Name = "Tag Aura Range", Range = {0, 15}, Increment = 1, CurrentValue = 10, Flag = "TagAuraRange", Callback = function(Value) tagAuraRange = Value end, })
+local SliderTagAuraRange = Tab:CreateSlider({ Name = "Tag Range", Range = {0, 15}, Increment = 1, CurrentValue = 10, Flag = "TagAuraRange", Callback = function(Value) tagAuraRange = Value end, })
 
-Tab:CreateToggle({ Name = "Tag Aura Ignore Dead", Info = { Title = "Ignore Dead", Image = "rbxassetid://12735851647", Description = "Makes the tag aura ignore dead people", }, CurrentValue = false, Flag = "IgnoreDead", Callback = function(Value) ignoreDead = Value end })
+local ToggleIgnoreDead = Tab:CreateToggle({ Name = "Tag Ignore Dead", CurrentValue = false, Flag = "IgnoreDead", Callback = function(Value) ignoreDead = Value end, })
 
-Tab:CreateToggle({ Name = "Tag Aura Team Check", Info = { Title = "Team Check", Image = "rbxassetid://12735851647", Description = "Makes The Tag Aura Check if the player its trying to tag is on your team dont use in Ffa", }, CurrentValue = false, Flag = "TeamCheck", Callback = function(Value) teamCheck = Value end })
+local ToggleTeamCheck = Tab:CreateToggle({ Name = "Team Check Tag", CurrentValue = false, Flag = "TeamCheck", Callback = function(Value) teamCheck = Value end, })
 
 local players = game:GetService("Players") local replicatedStorage = game:GetService("ReplicatedStorage") local tagPlayerEvent = replicatedStorage.Events.game.tags.TagPlayer local animations = replicatedStorage.Animations.Base
 
@@ -69,7 +81,7 @@ local function playRandomTagAnimation() local character = players.LocalPlayer.Ch
 
 spawn(function() while true do if tagAura then local currentTime = tick() local localCharacter = players.LocalPlayer.Character if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then local localPosition = localCharacter.HumanoidRootPart.Position
 
-if tagAuraMode == "Closest" then
+if tagAuraMode[1] == "Closest" then
                 local nearestPlayer, shortestDistance = nil, tagAuraRange
                 for _, player in pairs(players:GetPlayers()) do
                     if player ~= players.LocalPlayer and isPlayerValid(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -85,7 +97,7 @@ if tagAuraMode == "Closest" then
                     playRandomTagAnimation()
                     print("Tagged", nearestPlayer.Name)
                 end
-            elseif tagAuraMode == "Multi Target" then
+            elseif tagAuraMode[1] == "Multi Target" then
                 for _, player in pairs(players:GetPlayers()) do
                     if player ~= players.LocalPlayer and isPlayerValid(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                         local distance = (player.Character.HumanoidRootPart.Position - localPosition).Magnitude
