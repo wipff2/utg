@@ -51,8 +51,6 @@ Tab:CreateButton({
 
 local tagAura = false local ignoreDead = false local teamCheck = false local tagAuraMode = "Closest" local tagAuraRange = 15 local tagCooldowns = {}
 
-local Section = Tab:CreateSection("Main", false)
-
 Tab:CreateToggle({ Name = "Tag Aura", Info = { Title = "Tag Aura", Image = "rbxassetid://12735851647", Description = "Auto Tags People For you best tag aura frr", }, CurrentValue = false, Flag = "TagAura", Callback = function(Value) tagAura = Value end })
 
 Tab:CreateDropdown({ Name = "Tag Aura Mode", Options = {"Closest", "Multi Target"}, CurrentOption = "Closest", MultiSelection = false, Flag = "TagAuraMode", Callback = function(Option) tagAuraMode = Option end })
