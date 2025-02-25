@@ -62,7 +62,7 @@ Tab:CreateButton({
 
 local Section = Tab:CreateSection("Tagging")
 local tagAura, ignoreDead, teamCheck = false, false, false
-local tagAuraMode, tagAuraRange = "Closest", 15
+local tagAuraMode, tagAuraRange = "Closest", 7
 local tagCooldowns = {}
 
 Tab:CreateToggle({
@@ -85,7 +85,7 @@ Tab:CreateSlider({
    Name = "Tagging Range",
    Range = {0, 15},
    Increment = 1,
-   CurrentValue = 10,
+   CurrentValue = 7,
    Flag = "TagAuraRange",
    Callback = function(Value) tagAuraRange = Value end,
 })
@@ -151,7 +151,7 @@ spawn(function()
                   tagPlayerEvent:InvokeServer(nearestPlayer.Character.Humanoid, nearestPlayer.Character.HumanoidRootPart.Position)
                   tagCooldowns[nearestPlayer] = currentTime
                   playRandomTagAnimation()
-                  print("Tagged", nearestPlayer.Name, "at distance:", shortestDistance)
+                  
                end
             elseif tagAuraMode == "Multi Target" then
                for _, player in ipairs(players:GetPlayers()) do
@@ -163,7 +163,7 @@ spawn(function()
                            tagPlayerEvent:InvokeServer(character.Humanoid, character.HumanoidRootPart.Position)
                            tagCooldowns[player] = currentTime
                            playRandomTagAnimation()
-                           print("Tagged", player.Name, "at distance:", distance)
+                           
                         end
                      end
                   end
