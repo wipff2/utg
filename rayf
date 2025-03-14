@@ -61,11 +61,10 @@ Tab:CreateButton({
 })
 
 local Section = Tab:CreateSection("Tagging")
--- Pastikan variabel global ada
 local ignoreDead = true
 local teamCheck = false
 local tagAura = true
-local tagAuraMode = "Closest" -- Bisa "Multi Target"
+local tagAuraMode = "Closest"
 local tagAuraRange = 7
 local tagCooldowns = {}
 
@@ -73,7 +72,10 @@ Tab:CreateToggle({
    Name = "Tagging Auto",
    CurrentValue = false,
    Flag = "TagAura",
-   Callback = function(Value) tagAura = Value end,
+   Callback = function(Value)
+       tagAura = Value
+       print("Tagging Auto toggled:", Value)
+   end,
 })
 
 Tab:CreateDropdown({
@@ -82,7 +84,10 @@ Tab:CreateDropdown({
    CurrentOption = "Closest",
    MultipleOptions = false,
    Flag = "TagAuraMode",
-   Callback = function(Option) tagAuraMode = Option end,
+   Callback = function(Option)
+       tagAuraMode = Option
+       print("Tagging Mode set to:", Option)
+   end,
 })
 
 Tab:CreateSlider({
@@ -91,55 +96,93 @@ Tab:CreateSlider({
    Increment = 1,
    CurrentValue = 7,
    Flag = "TagAuraRange",
-   Callback = function(Value) tagAuraRange = Value end,
+   Callback = function(Value)
+       tagAuraRange = Value
+       print("Tagging Range set to:", Value)
+   end,
 })
 
 Tab:CreateToggle({
    Name = "Ignore Dead",
    CurrentValue = false,
    Flag = "IgnoreDead",
-   Callback = function(Value) ignoreDead = Value end,
+   Callback = function(Value)
+       ignoreDead = Value
+       print("Ignore Dead toggled:", Value)
+   end,
 })
 
 Tab:CreateToggle({
    Name = "Team Check",
    CurrentValue = false,
    Flag = "TeamCheck",
-   Callback = function(Value) teamCheck = Value end,
+   Callback = function(Value)
+       teamCheck = Value
+       print("Team Check toggled:", Value)
+   end,
 })
 
--- Services
 local players = game:GetService("Players")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local tagPlayerEvent = replicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
 local runService = game:GetService("RunService")
 
--- Fungsi untuk memeriksa validitas pemain
+local function moveMouseGradually(targetPosition)
+    local camera = workspace.CurrentCamera
+    local viewportPoint = camera:WorldToViewportPoint(targetPosition)
+    local targetX = viewportPoint.X - (camera.ViewportSize.X / 2)
+    local targetY = viewportPoint.Y - (camera.ViewportSize.Y / 2)
+
+    local steps = math.clamp(math.floor(math.abs(targetX + targetY) / 10), 5, 15)
+
+    for i = 1, steps do
+        mousemoverel(targetX / steps, targetY / steps)
+        task.wait(0.015 + (math.random() * 0.01))
+    end
+end
+
 local function isPlayerValid(player)
     if not player.Character then return false end
-    if ignoreDead and player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead" then return false end
-    if teamCheck and player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == players.LocalPlayer.PlayerRole.Value then return false end
+    local localPlayer = players.LocalPlayer
+    local localRole = localPlayer:FindFirstChild("PlayerRole") and localPlayer.PlayerRole.Value
+    local targetRole = player:FindFirstChild("PlayerRole") and player.PlayerRole.Value
+
+    if ignoreDead and targetRole == "Dead" then return false end
+
+    if teamCheck then
+        if localRole == "Crown" or localRole == "SoloCrown" then
+            if targetRole ~= "Neutral" then return false end
+        else
+            if targetRole == localRole then return false end
+        end
+    end
     return true
 end
 
--- Fungsi untuk melakukan tagging
-local function tagPlayer(player)
-    local currentTime = tick()
+local function tagPlayer(player, distance)
+    local currentTime = os.clock()
     local character = player.Character
     if character then
         local humanoid = character:FindFirstChild("Humanoid")
         local targetHRP = character:FindFirstChild("HumanoidRootPart")
 
         if humanoid and targetHRP then
-            -- InvokeServer untuk melakukan tagging
-            tagPlayerEvent:InvokeServer(humanoid, targetHRP.Position)
-            -- Set cooldown untuk pemain ini
+            if distance <= 2 or distance > tagAuraRange then return end -- Batasi jarak valid
+
+            print("Preparing to tag:", player.Name, "| Distance:", distance)
+
+            moveMouseGradually(targetHRP.Position)
+            task.wait(math.random(0.2, 0.5))
+
+            local adjustedDistance = math.clamp(distance - 2, 2, tagAuraRange)
+
+            print("Tagging player:", player.Name, "| Adjusted Distance:", adjustedDistance, "| Time:", os.time())
+            tagPlayerEvent:InvokeServer(humanoid, targetHRP.Position + Vector3.new(0, 0, -adjustedDistance))
             tagCooldowns[player] = currentTime
         end
     end
 end
 
--- Fungsi utama untuk mendeteksi pemain yang dekat
 local function onHeartbeat()
     if not tagAura then return end
 
@@ -150,49 +193,53 @@ local function onHeartbeat()
     if not humanoidRootPart then return end
 
     local localPosition = humanoidRootPart.Position
-    local currentTime = tick()
+    local currentTime = os.clock()
+    local validPlayers = {}
 
-    if tagAuraMode == "Closest" then
-        local nearestPlayer, shortestDistance = nil, tagAuraRange
+    for _, player in ipairs(players:GetPlayers()) do
+        if player ~= localPlayer and isPlayerValid(player) then
+            local character = player.Character
+            local targetHRP = character and character:FindFirstChild("HumanoidRootPart")
 
-        -- Cari pemain terdekat
-        for _, player in ipairs(players:GetPlayers()) do
-            if player ~= localPlayer and isPlayerValid(player) then
-                local character = player.Character
-                local targetHRP = character and character:FindFirstChild("HumanoidRootPart")
-
-                if targetHRP then
-                    local distance = (targetHRP.Position - localPosition).Magnitude
-                    if distance <= tagAuraRange and distance < shortestDistance and (not tagCooldowns[player] or currentTime - tagCooldowns[player] > 1) then
-                        nearestPlayer, shortestDistance = player, distance
-                    end
-                end
-            end
-        end
-
-        -- Jika ada pemain terdekat, lakukan tagging
-        if nearestPlayer then
-            tagPlayer(nearestPlayer)
-        end
-    elseif tagAuraMode == "Multi Target" then
-        -- Tag semua pemain dalam jarak
-        for _, player in ipairs(players:GetPlayers()) do
-            if player ~= localPlayer and isPlayerValid(player) then
-                local character = player.Character
-                local targetHRP = character and character:FindFirstChild("HumanoidRootPart")
-
-                if targetHRP then
-                    local distance = (targetHRP.Position - localPosition).Magnitude
-                    if distance <= tagAuraRange and (not tagCooldowns[player] or currentTime - tagCooldowns[player] > 1) then
-                        tagPlayer(player)
-                    end
+            if targetHRP then
+                local distance = (targetHRP.Position - localPosition).Magnitude
+                if distance > 2 and distance <= tagAuraRange then -- Jarak harus valid
+                    table.insert(validPlayers, {player = player, distance = distance})
                 end
             end
         end
     end
-end
 
--- Jalankan fungsi onHeartbeat setiap frame menggunakan Heartbeat
+    if #validPlayers > 0 then
+        print("Valid players detected:", #validPlayers)
+    end
+
+    if tagAuraMode == "Closest" then
+        table.sort(validPlayers, function(a, b) return a.distance < b.distance end)
+
+        if validPlayers[1] then
+            local target = validPlayers[1]
+            if not tagCooldowns[target.player] or currentTime - tagCooldowns[target.player] > 1.2 then
+                print("Tagging closest:", target.player.Name, "| Distance:", target.distance)
+                tagPlayer(target.player, target.distance)
+                task.wait(math.random(0.5, 1.2))
+            end
+        end
+    elseif tagAuraMode == "Multi Target" then
+        local maxTags = math.random(2, 4)
+        local taggedCount = 0
+
+        for _, target in ipairs(validPlayers) do
+            if taggedCount >= maxTags then break end
+            if not tagCooldowns[target.player] or currentTime - tagCooldowns[target.player] > 1.5 then
+                print("Tagging multi:", target.player.Name, "| Distance:", target.distance)
+                tagPlayer(target.player, target.distance)
+                taggedCount = taggedCount + 1
+                task.wait(math.random(0.6, 1.5))
+            end
+        end
+    end
+end
 runService.Heartbeat:Connect(onHeartbeat)
 -- abcddddddddddddddddddddddddd
 local Section = Tab:CreateSection("Players")
