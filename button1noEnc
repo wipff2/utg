@@ -85,28 +85,9 @@ local function adjustHumanoidRootPart(player, isActive)
         return
     end
 
-<<<<<<< HEAD
     -- Atur ukuran dan transparansi berdasarkan status tombol
     humanoidRootPart.Size = isActive and activeSize or defaultSize
     humanoidRootPart.Transparency = isActive and activeTransparency or defaultTransparency
-=======
-    if not humanoidRootPart:FindFirstChild("Hitbox") then
-        local hitbox = Instance.new("Part")
-        hitbox.Name = "Hitbox"
-        hitbox.Size = hitboxSize
-        hitbox.Transparency = hitboxTransparency
-        hitbox.Color = Color3.new(1, 0, 0)
-        hitbox.Anchored = false
-        hitbox.CanCollide = true
-        hitbox.Massless = true
-        hitbox.Parent = humanoidRootPart
-
-        local weld = Instance.new("WeldConstraint")
-        weld.Part0 = humanoidRootPart
-        weld.Part1 = hitbox
-        weld.Parent = hitbox
-    end
->>>>>>> ea8e5d2f4159597b40eda4b9119506c0c3a8cbb2
 end
 
 -- Fungsi untuk menghapus hitbox
@@ -391,113 +372,77 @@ end
 -- Toggle farm coin functionality
 local farmCoinActive = false
 local farmCoinLoop
-local lastCoinCheck = nil -- Variable to store the last checked coin
-local lastCFrame = nil -- Variable to store the last CFrame
-local timeSinceLastMove = 0 -- Time since the last CFrame change
-local stopThreshold = 3 -- Time threshold in seconds to consider the coin stopped
+local lastCoinCheck = nil
+local lastCFrame = nil
+local timeSinceLastMove = 0
+local stopThreshold = 3
 
 local function teleportToPosition(targetPosition)
     local character = player.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
-        -- Tambahkan offset kecil ke posisi tujuan teleport dan naik sedikit ke atas koin
-        local offset = Vector3.new(math.random(-4, 4), 6, math.random(-4, 4)) -- Menggeser di X, Z, dan 3 unit di Y (ke atas)
+        local offset = Vector3.new(math.random(-4, 4), 6, math.random(-4, 4))
         local newPosition = targetPosition.Position + offset
-        character:SetPrimaryPartCFrame(CFrame.new(newPosition)) -- Teleport ke posisi baru yang sudah digeser
+        character:SetPrimaryPartCFrame(CFrame.new(newPosition))
     end
+end
+
+local function findNewCoin()
+    local coinsFolder = workspace:FindFirstChild("coins")
+    if coinsFolder then
+        local coinContainer = coinsFolder:FindFirstChild("Coin")
+        if coinContainer then
+            for _, coin in pairs(coinContainer:GetChildren()) do
+                if coin:IsA("MeshPart") and coin.Transparency < 1 then
+                    return coin
+                end
+            end
+        end
+    end
+    return nil
 end
 
 local function toggleFarmCoin()
     farmCoinActive = not farmCoinActive
     if farmCoinActive then
         farmCoinButton.Text = "Stop Farm Coin (F)"
-        farmCoinLoop =
-            coroutine.create(
-            function()
-                local targetMeshId = "rbxassetid://8483581926"
-                
-                -- Cache untuk coin folder
-                local coinsFolder = workspace:FindFirstChild("coins")
-
-                local function findCoinModel()
-                    if coinsFolder then
-                        local coinContainer = coinsFolder:FindFirstChild("Coin")
-                        if coinContainer then
-                            for _, coin in pairs(coinContainer:GetChildren()) do
-                                if coin:IsA("MeshPart") then
-                                    return coin
-                                end
-                            end
-                        end
-                    end
-                    return nil
+        farmCoinLoop = coroutine.create(function()
+            while farmCoinActive do
+                local coinModel = findNewCoin()
+                if coinModel and (coinModel.CFrame ~= lastCFrame) then
+                    lastCFrame = coinModel.CFrame
+                    teleportToPosition(coinModel.CFrame)
+                    timeSinceLastMove = 0 
+                else
+                    timeSinceLastMove = timeSinceLastMove + 0.6 
                 end
-
-                while farmCoinActive do
-                    local coinModel = findCoinModel()
-
-                    if coinModel and (coinModel.CFrame ~= lastCFrame) then
-                        lastCFrame = coinModel.CFrame
-                        teleportToPosition(coinModel.CFrame)
-                        timeSinceLastMove = 0 -- Reset waktu jika posisi berubah
-                    else
-                        timeSinceLastMove = timeSinceLastMove + 0.6 -- Tambahkan jeda waktu
-                    end
-
-                    wait(0.6) -- Loop dengan jeda yang lebih panjang untuk mengurangi beban
-                end
+                wait(0.6) 
             end
-        )
+        end)
         coroutine.resume(farmCoinLoop)
     else
         farmCoinButton.Text = "Start Farm Coin (F)"
     end
 end
 
-local function isNewCoinWithGlow(coinModel)
-    if coinModel and coinModel:IsA("Model") and coinModel:FindFirstChild("CoinGlow") then
-        -- Periksa apakah koin yang diperiksa berbeda dari koin sebelumnya
-        if lastCoinCheck ~= coinModel then
-            lastCoinCheck = coinModel -- Simpan referensi koin baru
-            return true -- Ditemukan koin baru dengan CoinGlow
-        end
-    end
-    return false -- Tidak ditemukan koin baru
-end
-
--- Loop utama untuk memeriksa dan teleport ke koin baru
 while farmCoinActive do
-    local coinModel = findCoinModel()
-
-    -- Jika ditemukan koin baru dengan CoinGlow, teleport setelah 2 detik
-    if isNewCoinWithGlow(coinModel) then
-        task.wait(2) -- Menunggu 2 detik sebelum teleportasi
-        teleportToPosition(coinModel:GetPrimaryPartCFrame())
-        task.wait(3) -- Menunggu 3 detik sebelum mencari koin baru
+    local coinModel = findNewCoin()
+    if coinModel then
+        task.wait(2) 
+        teleportToPosition(coinModel.CFrame)
+        task.wait(3) 
     end
-
-    -- Memeriksa apakah koin masih bergerak
-    if coinModel and coinModel:GetPrimaryPartCFrame() ~= lastCFrame then
-        lastCFrame = coinModel:GetPrimaryPartCFrame()
-        timeSinceLastMove = 0 -- Reset timer karena koin bergerak
+    if coinModel and coinModel.CFrame ~= lastCFrame then
+        lastCFrame = coinModel.CFrame
+        timeSinceLastMove = 0 
     else
-        timeSinceLastMove = timeSinceLastMove + 0.1 -- Tambah waktu sejak pergerakan terakhir
+        timeSinceLastMove = timeSinceLastMove + 0.1 
     end
-
-    -- Jika koin berhenti lebih dari batas waktu (stopThreshold), cari koin lain
     if timeSinceLastMove >= stopThreshold then
         print("Koin berhenti, mencari koin baru...")
-        coinModel = findCoinModel() -- Mencari koin lain
-        timeSinceLastMove = 0 -- Reset timer
+        coinModel = findNewCoin()
+        timeSinceLastMove = 0 
     end
-
-    -- Jika tidak ada koin yang ditemukan, teleport ke target MeshId
-    local targetPart = findTargetPartByMeshId()
-    if targetPart and targetPart.Parent then
-        teleportToPosition(targetPart:GetPrimaryPartCFrame())
-        task.wait(3) -- Menunggu 3 detik sebelum mencari koin baru
-    end
-
-    task.wait(0.6) -- Tunggu 0.6 detik sebelum iterasi berikutnya untuk mengurangi beban CPU
+    task.wait(0.6) 
 end
 
 local UserInputService = game:GetService("UserInputService")
