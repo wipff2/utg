@@ -129,7 +129,7 @@ local tagAuraMode = "Closest"
 local tagAuraRange = 7
 local tagCooldowns = {}
 local roleChangeCooldowns = {}
-local lastTagTime = {} -- Menyimpan waktu terakhir tagging per pemain
+local lastTagTime = {}
 
 local players = game:GetService("Players")
 local replicatedStorage = game:GetService("ReplicatedStorage")
@@ -141,12 +141,9 @@ local function isPlayerValid(player)
     local localPlayer = players.LocalPlayer
     local localRole = localPlayer:FindFirstChild("PlayerRole") and localPlayer.PlayerRole.Value
     local targetRoleObject = player:FindFirstChild("PlayerRole")
-
     if not targetRoleObject then return false end
     local targetRole = targetRoleObject.Value
-
     if ignoreDead and targetRole == "Dead" then return false end
-
     if teamCheck then
         if localRole == "Crown" or localRole == "SoloCrown" then
             if targetRole ~= "Neutral" then return false end
@@ -154,12 +151,9 @@ local function isPlayerValid(player)
             if targetRole == localRole then return false end
         end
     end
-
-    -- Cek delay setelah perubahan role
     if roleChangeCooldowns[player] and os.clock() - roleChangeCooldowns[player].time < 1 then
         return false
     end
-
     return true
 end
 
@@ -170,7 +164,6 @@ local function trackRoleChanges()
             if roleObject then
                 local currentRole = roleObject.Value
                 local previousData = roleChangeCooldowns[player]
-
                 if not previousData or previousData.lastRole ~= currentRole then
                     roleChangeCooldowns[player] = {
                         lastRole = currentRole,
@@ -188,30 +181,20 @@ end
 
 local function tagPlayer(player, distance)
     local currentTime = os.clock()
-    if lastTagTime[player] and currentTime - lastTagTime[player] < 1 then
-        return -- Jika belum 1 detik sejak tagging terakhir, keluar
-    end
-
+    if lastTagTime[player] and currentTime - lastTagTime[player] < 1 then return end
     local character = player.Character
     if character then
         local humanoid = character:FindFirstChild("Humanoid")
         local targetHRP = character:FindFirstChild("HumanoidRootPart")
-
         if humanoid and targetHRP then
             if distance <= 2 or distance > tagAuraRange then return end
-
-            task.wait(randomTagDelay()) 
-
+            task.wait(randomTagDelay())
             local success, response = pcall(function()
                 return tagPlayerEvent:InvokeServer(humanoid, targetHRP.Position + Vector3.new(math.random(), math.random(), math.random()))
             end)
-
             if success and response then
-                if math.random(1, 3) == 1 then
-                    print("[INFO] Target hit @", os.time())
-                end
                 tagCooldowns[player] = currentTime
-                lastTagTime[player] = currentTime -- Update waktu tagging terakhir
+                lastTagTime[player] = currentTime
             end
         end
     end
@@ -219,24 +202,18 @@ end
 
 local function onHeartbeat()
     if not tagAura then return end
-
     trackRoleChanges()
-
     local localPlayer = players.LocalPlayer
     local localCharacter = localPlayer.Character
     local humanoidRootPart = localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
-
     if not humanoidRootPart then return end
-
     local localPosition = humanoidRootPart.Position
     local currentTime = os.clock()
     local validPlayers = {}
-
     for _, player in ipairs(players:GetPlayers()) do
         if player ~= localPlayer and isPlayerValid(player) then
             local character = player.Character
             local targetHRP = character and character:FindFirstChild("HumanoidRootPart")
-
             if targetHRP then
                 local distance = (targetHRP.Position - localPosition).Magnitude
                 if distance > 2 and distance <= tagAuraRange then
@@ -245,10 +222,8 @@ local function onHeartbeat()
             end
         end
     end
-
     if tagAuraMode == "Closest" then
         table.sort(validPlayers, function(a, b) return a.distance < b.distance end)
-
         if validPlayers[1] then
             local target = validPlayers[1]
             if not tagCooldowns[target.player] or currentTime - tagCooldowns[target.player] > 1.2 then
@@ -258,7 +233,6 @@ local function onHeartbeat()
     elseif tagAuraMode == "Multi Target" then
         local maxTags = math.random(2, 4)
         local taggedCount = 0
-
         for _, target in ipairs(validPlayers) do
             if taggedCount >= maxTags then break end
             if not tagCooldowns[target.player] or currentTime - tagCooldowns[target.player] > 1.5 then
