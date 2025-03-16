@@ -463,7 +463,7 @@ local function onInputBegan(input, gameProcessed)
 end
 
 -- Hubungkan event ke tombol UI
-teleportButton.MouseButton1Click:Connect(toggleTeleport)
+teleportButton.MouseButt on1Click:Connect(toggleTeleport)
 teleportAndCreateBlockButton.MouseButton1Click:Connect(teleportAndCreateBlock)
 farmCoinButton.MouseButton1Click:Connect(toggleFarmCoin)
 
