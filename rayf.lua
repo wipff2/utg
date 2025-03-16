@@ -65,7 +65,6 @@ local ignoreDead = true
 local teamCheck = false
 local tagAura = false
 local tagAuraMode = "Closest"
-local tagAuraRange = 7
 local tagCooldowns = {}
 
 Tab:CreateToggle({
@@ -75,18 +74,6 @@ Tab:CreateToggle({
    Callback = function(Value)
        tagAura = Value
        print("Tagging Auto toggled:", Value)
-   end,
-})
-
-Tab:CreateDropdown({
-   Name = "Tagging Mode",
-   Options = {"Closest", "Multi Target"},
-   CurrentOption = "Closest",
-   MultipleOptions = false,
-   Flag = "TagAuraMode",
-   Callback = function(Option)
-       tagAuraMode = Option
-       print("Tagging Mode set to:", Option)
    end,
 })
 
@@ -130,30 +117,32 @@ local localPlayer = Players.LocalPlayer
 local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
 
 local lastTagTime = {}
+local tagAuraRange = 10 -- Bisa diubah sesuai kebutuhan
 
 local function randomTagDelay()
-    return math.random(100, 250) / 100 -- Delay antara 1.0 dan 2.5 detik
+    return math.random(120, 350) / 100 + math.random() / 2 -- Delay antara 1.2 dan 3.7 detik dengan tambahan acak
 end
 
 local function isValidTarget(player)
     if not player or player == localPlayer then return false end
+
     local character = player.Character
     if not character then return false end
 
     local humanoid = character:FindFirstChild("Humanoid")
     local targetHRP = character:FindFirstChild("HumanoidRootPart")
 
-    if ignoreDead and humanoid and humanoid.Health <= 0 then return false end
-    if teamCheck and player.Team == localPlayer.Team then return false end
-
-    return humanoid and targetHRP
+    if humanoid and humanoid.Health > 0 and targetHRP then
+        return true
+    end
+    return false
 end
 
 local function tagPlayer(player)
     if not isValidTarget(player) then return end
 
     local currentTime = os.clock()
-    if lastTagTime[player] and currentTime - lastTagTime[player] < 1 then return end -- Cooldown 1 detik
+    if lastTagTime[player] and currentTime - lastTagTime[player] < (1.2 + math.random() * 0.8) then return end -- Cooldown dengan sedikit randomisasi
 
     local localCharacter = localPlayer.Character
     if not localCharacter then return end
@@ -167,32 +156,41 @@ local function tagPlayer(player)
     if distance <= 2 or distance > tagAuraRange then return end -- Batasi jarak tagging
 
     task.defer(function()
-        task.wait(randomTagDelay() + math.random() / 2) -- Tambahan delay acak
+        task.wait(randomTagDelay())
+
+        if math.random(1, 5) <= 2 then return end -- Random skip untuk menghindari pola tagging
 
         local success, response = pcall(function()
-            return tagPlayerEvent:InvokeServer(player.Character.Humanoid, targetHRP.Position + Vector3.new(math.random(), math.random(), math.random()))
+            return tagPlayerEvent:InvokeServer(
+                player.Character:FindFirstChild("Humanoid"),
+                targetHRP.Position + Vector3.new(math.random(-3, 3), math.random(-1.5, 1.5), math.random(-3, 3)) -- Lebih banyak jitter posisi tagging
+            )
         end)
 
         if success and response then
-            if math.random(1, 4) == 1 then -- Mengurangi kemungkinan log untuk menghindari pola deteksi
-                print("[INFO] Target hit @", os.clock())
+            if math.random(1, 6) == 1 then -- Random log untuk menghindari pola
+                print("[INFO]", string.char(math.random(65, 90)) .. " Target @" .. os.time())
             end
-            lastTagTime[player] = currentTime
+            lastTagTime[player] = os.clock()
         end
     end)
 end
 
 RunService.Heartbeat:Connect(function()
-    if not tagAura then return end -- Pastikan toggle berfungsi
+    if math.random(1, 4) == 1 then return end -- Random skip tambahan
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if math.random(1, 3) ~= 1 then -- Random skip untuk menghindari pola deteksi
-            tagPlayer(player)
-        end
+    local shuffledPlayers = Players:GetPlayers()
+    for i = #shuffledPlayers, 2, -1 do
+        local j = math.random(1, i)
+        shuffledPlayers[i], shuffledPlayers[j] = shuffledPlayers[j], shuffledPlayers[i] -- Shuffle daftar pemain untuk menghindari urutan tetap
+    end
+
+    for _, player in ipairs(shuffledPlayers) do
+        tagPlayer(player)
     end
 end)
 
-print("Tag system loaded.")
+print("System Ready:", math.random(1000, 9999)) -- Random output untuk menyamarkan pola
 -- abcddddddddddddddddddddddddd
 local Section = Tab:CreateSection("Players")
 local UserInputService = game:GetService("UserInputService")
