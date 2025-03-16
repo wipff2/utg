@@ -122,30 +122,28 @@ Tab:CreateToggle({
    end,
 })
 
+local ignoreDead = true
+local teamCheck = false
+local tagAura = true
+local tagAuraMode = "Closest"
+local tagAuraRange = 7
+local tagCooldowns = {}
+local roleChangeCooldowns = {}
+local lastTagTime = {} -- Menyimpan waktu terakhir tagging per pemain
+
 local players = game:GetService("Players")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local tagPlayerEvent = replicatedStorage:WaitForChild("Events"):WaitForChild("game"):WaitForChild("tags"):WaitForChild("TagPlayer")
 local runService = game:GetService("RunService")
 
-local function moveMouseGradually(targetPosition)
-    local camera = workspace.CurrentCamera
-    local viewportPoint = camera:WorldToViewportPoint(targetPosition)
-    local targetX = viewportPoint.X - (camera.ViewportSize.X / 2)
-    local targetY = viewportPoint.Y - (camera.ViewportSize.Y / 2)
-
-    local steps = math.clamp(math.floor(math.abs(targetX + targetY) / 10), 5, 15)
-
-    for i = 1, steps do
-        mousemoverel(targetX / steps, targetY / steps)
-        task.wait(0.015 + (math.random() * 0.01))
-    end
-end
-
 local function isPlayerValid(player)
     if not player.Character then return false end
     local localPlayer = players.LocalPlayer
     local localRole = localPlayer:FindFirstChild("PlayerRole") and localPlayer.PlayerRole.Value
-    local targetRole = player:FindFirstChild("PlayerRole") and player.PlayerRole.Value
+    local targetRoleObject = player:FindFirstChild("PlayerRole")
+
+    if not targetRoleObject then return false end
+    local targetRole = targetRoleObject.Value
 
     if ignoreDead and targetRole == "Dead" then return false end
 
@@ -156,38 +154,73 @@ local function isPlayerValid(player)
             if targetRole == localRole then return false end
         end
     end
+
+    -- Cek delay setelah perubahan role
+    if roleChangeCooldowns[player] and os.clock() - roleChangeCooldowns[player].time < 1 then
+        return false
+    end
+
     return true
+end
+
+local function trackRoleChanges()
+    for _, player in ipairs(players:GetPlayers()) do
+        if player ~= players.LocalPlayer then
+            local roleObject = player:FindFirstChild("PlayerRole")
+            if roleObject then
+                local currentRole = roleObject.Value
+                local previousData = roleChangeCooldowns[player]
+
+                if not previousData or previousData.lastRole ~= currentRole then
+                    roleChangeCooldowns[player] = {
+                        lastRole = currentRole,
+                        time = os.clock()
+                    }
+                end
+            end
+        end
+    end
+end
+
+local function randomTagDelay()
+    return math.random(100, 250) / 100
 end
 
 local function tagPlayer(player, distance)
     local currentTime = os.clock()
+    if lastTagTime[player] and currentTime - lastTagTime[player] < 1 then
+        return -- Jika belum 1 detik sejak tagging terakhir, keluar
+    end
+
     local character = player.Character
     if character then
         local humanoid = character:FindFirstChild("Humanoid")
         local targetHRP = character:FindFirstChild("HumanoidRootPart")
 
         if humanoid and targetHRP then
-            if distance <= 2 or distance > tagAuraRange then return end -- Batasi jarak valid
+            if distance <= 2 or distance > tagAuraRange then return end
 
-            print("Preparing to tag:", player.Name, "| Distance:", distance)
+            task.wait(randomTagDelay()) 
 
-            moveMouseGradually(targetHRP.Position)
-            
-            task.wait(math.random(0.7, 0.9))
-            local adjustedDistance = math.clamp(distance - 2, 2, tagAuraRange)
+            local success, response = pcall(function()
+                return tagPlayerEvent:InvokeServer(humanoid, targetHRP.Position + Vector3.new(math.random(), math.random(), math.random()))
+            end)
 
-            print("Tagging player:", player.Name, "| Adjusted Distance:", adjustedDistance, "| Time:", os.time())
-            tagPlayerEvent:InvokeServer(humanoid, targetHRP.Position + Vector3.new(0, 0, -adjustedDistance))
-            tagCooldowns[player] = currentTime
-            task.wait(math.random(0.7, 0.9))
+            if success and response then
+                if math.random(1, 3) == 1 then
+                    print("[INFO] Target hit @", os.time())
+                end
+                tagCooldowns[player] = currentTime
+                lastTagTime[player] = currentTime -- Update waktu tagging terakhir
+            end
         end
     end
 end
 
-local tagAuraConnection -- Variabel untuk menyimpan koneksi heartbeat
-
 local function onHeartbeat()
     if not tagAura then return end
+
+    trackRoleChanges()
 
     local localPlayer = players.LocalPlayer
     local localCharacter = localPlayer.Character
@@ -213,19 +246,13 @@ local function onHeartbeat()
         end
     end
 
-    if #validPlayers > 0 then
-        print("Valid players detected:", #validPlayers)
-    end
-
     if tagAuraMode == "Closest" then
         table.sort(validPlayers, function(a, b) return a.distance < b.distance end)
 
         if validPlayers[1] then
             local target = validPlayers[1]
             if not tagCooldowns[target.player] or currentTime - tagCooldowns[target.player] > 1.2 then
-                print("Tagging closest:", target.player.Name, "| Distance:", target.distance)
                 tagPlayer(target.player, target.distance)
-                task.wait(math.random(0.5, 1.2))
             end
         end
     elseif tagAuraMode == "Multi Target" then
@@ -235,15 +262,14 @@ local function onHeartbeat()
         for _, target in ipairs(validPlayers) do
             if taggedCount >= maxTags then break end
             if not tagCooldowns[target.player] or currentTime - tagCooldowns[target.player] > 1.5 then
-                print("Tagging multi:", target.player.Name, "| Distance:", target.distance)
                 tagPlayer(target.player, target.distance)
                 taggedCount = taggedCount + 1
-                task.wait(math.random(0.6, 1.5))
             end
         end
     end
 end
-runService.Heartbeat:Connect(onHeartbeat)
+
+local tagAuraConnection = runService.Heartbeat:Connect(onHeartbeat)
 -- abcddddddddddddddddddddddddd
 local Section = Tab:CreateSection("Players")
 local UserInputService = game:GetService("UserInputService")
