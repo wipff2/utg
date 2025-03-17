@@ -270,6 +270,7 @@ end
 
 -- Toggle farm coin functionality
 local farmCoinActive = false
+local farmCoinLoop
 local lastCFrame = nil
 local timeSinceLastMove = 0
 local stopThreshold = 3
@@ -284,62 +285,55 @@ local function teleportToPosition(targetPosition)
 end
 
 local function findNewTarget()
-    local targets = {}
-
-    -- Cari koin di workspace.coins.Coin
+    -- Cek koin di workspace.coins
     local coinsFolder = workspace:FindFirstChild("coins")
     if coinsFolder then
         local coinContainer = coinsFolder:FindFirstChild("Coin")
         if coinContainer then
             for _, coin in pairs(coinContainer:GetChildren()) do
                 if coin:IsA("MeshPart") and coin.Transparency < 1 then
-                    table.insert(targets, coin)
+                    return coin
                 end
             end
         end
     end
 
-    -- Cari cash di workspace.specialcurrency.Cash (Model)
-    local specialCurrencyFolder = workspace:FindFirstChild("specialcurrency")
-    if specialCurrencyFolder then
-        local cashModel = specialCurrencyFolder:FindFirstChild("Cash") -- Cash sebagai Model
+    -- Cek cash di workspace.specialcurrency.Cash
+    local cashFolder = workspace:FindFirstChild("specialcurrency")
+    if cashFolder then
+        local cashModel = cashFolder:FindFirstChild("Cash")
         if cashModel and cashModel:IsA("Model") then
             for _, part in pairs(cashModel:GetChildren()) do
-                if part:IsA("MeshPart") and part.Transparency < 1 then
-                    table.insert(targets, part)
+                if part:IsA("Part") then
+                    return part
                 end
             end
         end
     end
 
-    -- Jika ada target, pilih salah satu secara acak
-    return #targets > 0 and targets[math.random(1, #targets)] or nil
+    return nil
 end
 
 local function toggleFarmCoin()
     farmCoinActive = not farmCoinActive
-    farmCoinButton.Text = farmCoinActive and "Stop Farm Coin (F)" or "Start Farm Coin (F)"
-
     if farmCoinActive then
-        task.spawn(function()
+        farmCoinButton.Text = "Stop Farm Coin (F)"
+        farmCoinLoop = coroutine.create(function()
             while farmCoinActive do
-                local targetModel = findNewTarget()
-                if targetModel and targetModel.CFrame ~= lastCFrame then
-                    lastCFrame = targetModel.CFrame
-                    teleportToPosition(targetModel.CFrame)
+                local target = findNewTarget()
+                if target and target.CFrame ~= lastCFrame then
+                    lastCFrame = target.CFrame
+                    teleportToPosition(target.CFrame)
                     timeSinceLastMove = 0
                 else
                     timeSinceLastMove = timeSinceLastMove + 0.6
                 end
-
-                if timeSinceLastMove >= stopThreshold then
-                    print("Tidak ada perubahan, mencari target baru...")
-                    timeSinceLastMove = 0
-                end
-
-                task.wait(0.6)
+                wait(0.6)
             end
         end)
+        coroutine.resume(farmCoinLoop)
+    else
+        farmCoinButton.Text = "Start Farm Coin (F)"
     end
 end
 
