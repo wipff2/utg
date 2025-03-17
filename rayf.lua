@@ -119,10 +119,6 @@ local tagPlayerEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("ga
 local lastTagTime = {}
 local tagAuraRange = 10 -- Bisa diubah sesuai kebutuhan
 
-local function randomTagDelay()
-    return math.random(120, 350) / 100 + math.random() / 2 -- Delay antara 1.2 dan 3.7 detik dengan tambahan acak
-end
-
 local function isValidTarget(player)
     if not player or player == localPlayer then return false end
 
@@ -142,7 +138,7 @@ local function tagPlayer(player)
     if not isValidTarget(player) then return end
 
     local currentTime = os.clock()
-    if lastTagTime[player] and currentTime - lastTagTime[player] < (1.2 + math.random() * 0.8) then return end -- Cooldown dengan sedikit randomisasi
+    if lastTagTime[player] and currentTime - lastTagTime[player] < 1 then return end -- Cooldown 1 detik per pemain
 
     local localCharacter = localPlayer.Character
     if not localCharacter then return end
@@ -153,44 +149,30 @@ local function tagPlayer(player)
     if not localHRP or not targetHRP then return end
 
     local distance = (localHRP.Position - targetHRP.Position).Magnitude
-    if distance <= 2 or distance > tagAuraRange then return end -- Batasi jarak tagging
+    if distance > tagAuraRange then return end -- Langsung tag jika dalam jarak
 
-    task.defer(function()
-        task.wait(randomTagDelay())
-
-        if math.random(1, 5) <= 2 then return end -- Random skip untuk menghindari pola tagging
-
-        local success, response = pcall(function()
-            return tagPlayerEvent:InvokeServer(
-                player.Character:FindFirstChild("Humanoid"),
-                targetHRP.Position + Vector3.new(math.random(-3, 3), math.random(-1.5, 1.5), math.random(-3, 3)) -- Lebih banyak jitter posisi tagging
-            )
-        end)
-
-        if success and response then
-            if math.random(1, 6) == 1 then -- Random log untuk menghindari pola
-                print("[INFO]", string.char(math.random(65, 90)) .. " Target @" .. os.time())
-            end
-            lastTagTime[player] = os.clock()
-        end
+    local success, response = pcall(function()
+        return tagPlayerEvent:InvokeServer(
+            player.Character:FindFirstChild("Humanoid"),
+            targetHRP.Position
+        )
     end)
+
+    if success and response then
+        print("[INFO] Target hit @", os.time())
+        lastTagTime[player] = currentTime -- Update waktu tagging terakhir
+    end
 end
 
 RunService.Heartbeat:Connect(function()
-    if math.random(1, 4) == 1 then return end -- Random skip tambahan
-
-    local shuffledPlayers = Players:GetPlayers()
-    for i = #shuffledPlayers, 2, -1 do
-        local j = math.random(1, i)
-        shuffledPlayers[i], shuffledPlayers[j] = shuffledPlayers[j], shuffledPlayers[i] -- Shuffle daftar pemain untuk menghindari urutan tetap
-    end
-
-    for _, player in ipairs(shuffledPlayers) do
-        tagPlayer(player)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            tagPlayer(player)
+        end
     end
 end)
 
-print("System Ready:", math.random(1000, 9999)) -- Random output untuk menyamarkan pola
+print("System Ready")
 -- abcddddddddddddddddddddddddd
 local Section = Tab:CreateSection("Players")
 local UserInputService = game:GetService("UserInputService")
