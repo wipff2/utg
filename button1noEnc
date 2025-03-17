@@ -37,111 +37,10 @@ frame.BackgroundTransparency = 1
 frame.ZIndex = 100
 frame.Parent = screenGui
 
-wait(2) -- Pastikan GUI sudah muncul sebelum membuat tombol
 local buttonSpacing = 0.25
 local teleportButton = createStyledButton(frame, "Teleport / Back (T)", UDim2.new(0, 0, 0 * buttonSpacing, 0))
 local teleportAndCreateBlockButton = createStyledButton(frame, "Teleport & Create Blocks (R)", UDim2.new(0, 0, 1 * buttonSpacing, 0))
 local farmCoinButton = createStyledButton(frame, "Start Farm Coin (F)", UDim2.new(0, 0, 2 * buttonSpacing, 0))
-local hitboxButton = createStyledButton(frame, "Start Hitbox (H)", UDim2.new(0, 0, 3 * buttonSpacing, 0))
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService") -- Tambahkan ini
-local speaker = Players.LocalPlayer
-local hitboxActive = false
-local hitboxSize = Vector3.new(15, 15, 15)
-local hitboxTransparency = 0.7
-local teamCheck = false
-
-local playerAddedConnection
-local heartbeatConnection
-
--- Fungsi untuk mendapatkan PlayerRole
-local function getPlayerRole(player)
-    if player:FindFirstChild("PlayerRole") then
-        return player.PlayerRole.Value
-    elseif player.Character and player.Character:FindFirstChild("PlayerRole") then
-        return player.Character.PlayerRole.Value
-    end
-    return nil
-end
-
-local defaultSize = Vector3.new(2, 2, 1) -- Ukuran default HumanoidRootPart
-local defaultTransparency = 1            -- Transparansi default
-local activeSize = Vector3.new(20, 20, 20) -- Ukuran saat tombol aktif
-local activeTransparency = 0.7            -- Transparansi saat tombol aktif
-local hitboxActive = false
-
-local function adjustHumanoidRootPart(player, isActive)
-    if player == speaker then return end
-
-    local character = player.Character
-    if not character then return end
-
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    local playerRole = getPlayerRole(player)
-    local speakerRole = getPlayerRole(speaker)
-
-    if not humanoidRootPart or (teamCheck and playerRole == speakerRole) then
-        return
-    end
-
-    -- Atur ukuran dan transparansi berdasarkan status tombol
-    humanoidRootPart.Size = isActive and activeSize or defaultSize
-    humanoidRootPart.Transparency = isActive and activeTransparency or defaultTransparency
-end
-
--- Fungsi untuk menghapus hitbox
-local function destroyHitbox(player)
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local hitbox = player.Character.HumanoidRootPart:FindFirstChild("Hitbox")
-        if hitbox then
-            hitbox:Destroy()
-        end
-    end
-end
-
--- Hapus hitbox saat pemain keluar
-Players.PlayerRemoving:Connect(function(player)
-    destroyHitbox(player)
-end)
--- Toggle hitbox
-local hitboxActive = false
-local function toggleHitbox()
-    hitboxActive = not hitboxActive
-    hitboxButton.Text = hitboxActive and "Stop Hitbox (H)" or "Start Hitbox (H)"
-
-    for _, player in pairs(Players:GetPlayers()) do
-        adjustHumanoidRootPart(player, hitboxActive)
-    end
-
-    if hitboxActive then
-        if not playerAddedConnection then
-            playerAddedConnection = Players.PlayerAdded:Connect(function(newPlayer)
-                newPlayer.CharacterAdded:Connect(function()
-                    adjustHumanoidRootPart(newPlayer, hitboxActive)
-                end)
-            end)
-        end
-
-        if not heartbeatConnection then
-            heartbeatConnection = RunService.Heartbeat:Connect(function()
-                for _, player in pairs(Players:GetPlayers()) do
-                    adjustHumanoidRootPart(player, hitboxActive)
-                end
-            end)
-        end
-    else
-        if playerAddedConnection then
-            playerAddedConnection:Disconnect()
-            playerAddedConnection = nil
-        end
-
-        if heartbeatConnection then
-            heartbeatConnection:Disconnect()
-            heartbeatConnection = nil
-        end
-    end
-end
 
 -- Variables for visibility toggle
 local buttonsVisible = true
@@ -371,8 +270,6 @@ end
 
 -- Toggle farm coin functionality
 local farmCoinActive = false
-local farmCoinLoop
-local lastCoinCheck = nil
 local lastCFrame = nil
 local timeSinceLastMove = 0
 local stopThreshold = 3
@@ -386,63 +283,64 @@ local function teleportToPosition(targetPosition)
     end
 end
 
-local function findNewCoin()
+local function findNewTarget()
+    local targets = {}
+
+    -- Cari koin di workspace.coins.Coin
     local coinsFolder = workspace:FindFirstChild("coins")
     if coinsFolder then
         local coinContainer = coinsFolder:FindFirstChild("Coin")
         if coinContainer then
             for _, coin in pairs(coinContainer:GetChildren()) do
                 if coin:IsA("MeshPart") and coin.Transparency < 1 then
-                    return coin
+                    table.insert(targets, coin)
                 end
             end
         end
     end
-    return nil
+
+    -- Cari cash di workspace.specialcurrency.Cash (Model)
+    local specialCurrencyFolder = workspace:FindFirstChild("specialcurrency")
+    if specialCurrencyFolder then
+        local cashModel = specialCurrencyFolder:FindFirstChild("Cash") -- Cash sebagai Model
+        if cashModel and cashModel:IsA("Model") then
+            for _, part in pairs(cashModel:GetChildren()) do
+                if part:IsA("MeshPart") and part.Transparency < 1 then
+                    table.insert(targets, part)
+                end
+            end
+        end
+    end
+
+    -- Jika ada target, pilih salah satu secara acak
+    return #targets > 0 and targets[math.random(1, #targets)] or nil
 end
 
 local function toggleFarmCoin()
     farmCoinActive = not farmCoinActive
+    farmCoinButton.Text = farmCoinActive and "Stop Farm Coin (F)" or "Start Farm Coin (F)"
+
     if farmCoinActive then
-        farmCoinButton.Text = "Stop Farm Coin (F)"
-        farmCoinLoop = coroutine.create(function()
+        task.spawn(function()
             while farmCoinActive do
-                local coinModel = findNewCoin()
-                if coinModel and (coinModel.CFrame ~= lastCFrame) then
-                    lastCFrame = coinModel.CFrame
-                    teleportToPosition(coinModel.CFrame)
-                    timeSinceLastMove = 0 
+                local targetModel = findNewTarget()
+                if targetModel and targetModel.CFrame ~= lastCFrame then
+                    lastCFrame = targetModel.CFrame
+                    teleportToPosition(targetModel.CFrame)
+                    timeSinceLastMove = 0
                 else
-                    timeSinceLastMove = timeSinceLastMove + 0.6 
+                    timeSinceLastMove = timeSinceLastMove + 0.6
                 end
-                wait(0.6) 
+
+                if timeSinceLastMove >= stopThreshold then
+                    print("Tidak ada perubahan, mencari target baru...")
+                    timeSinceLastMove = 0
+                end
+
+                task.wait(0.6)
             end
         end)
-        coroutine.resume(farmCoinLoop)
-    else
-        farmCoinButton.Text = "Start Farm Coin (F)"
     end
-end
-
-while farmCoinActive do
-    local coinModel = findNewCoin()
-    if coinModel then
-        task.wait(2) 
-        teleportToPosition(coinModel.CFrame)
-        task.wait(3) 
-    end
-    if coinModel and coinModel.CFrame ~= lastCFrame then
-        lastCFrame = coinModel.CFrame
-        timeSinceLastMove = 0 
-    else
-        timeSinceLastMove = timeSinceLastMove + 0.1 
-    end
-    if timeSinceLastMove >= stopThreshold then
-        print("Koin berhenti, mencari koin baru...")
-        coinModel = findNewCoin()
-        timeSinceLastMove = 0 
-    end
-    task.wait(0.6) 
 end
 
 local UserInputService = game:GetService("UserInputService")
@@ -457,21 +355,13 @@ local function onInputBegan(input, gameProcessed)
         teleportAndCreateBlock()
     elseif input.KeyCode == Enum.KeyCode.F then
         toggleFarmCoin()
-    elseif input.KeyCode == Enum.KeyCode.H then
-        toggleHitbox()
     end
 end
 
 -- Hubungkan event ke tombol UI
-teleportButton.MouseButt on1Click:Connect(toggleTeleport)
+teleportButton.MouseButton1Click:Connect(toggleTeleport)
 teleportAndCreateBlockButton.MouseButton1Click:Connect(teleportAndCreateBlock)
 farmCoinButton.MouseButton1Click:Connect(toggleFarmCoin)
-
-if hitboxButton then
-    hitboxButton.MouseButton1Click:Connect(toggleHitbox)
-else
-    warn("⚠️ Tidak bisa menghubungkan event karena tombol tidak ditemukan!")
-end
 
 -- Hubungkan event ke keyboard
 UserInputService.InputBegan:Connect(onInputBegan)
