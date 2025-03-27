@@ -132,3 +132,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+loadstring(game:HttpGet("https://raw.githubusercontent.com/wipff2/gef/refs/heads/main/credits.lua"))()
