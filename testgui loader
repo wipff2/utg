@@ -34,12 +34,12 @@ local Window = Rayfield:CreateWindow({
 })
 
 local Tab = Window:CreateTab("one", 4483362458) -- Title, Image
-local SelectedOption = "Script 1" -- Default option
+local SelectedOption = "Both" -- Default option
 
 local Dropdown = Tab:CreateDropdown({
     Name = "Select Script",
     Options = {"Script 1 button", "Script 2 ui", "Both"},
-    CurrentOption = {"Script 1"},
+    CurrentOption = {"Both"},
     MultipleOptions = false,
     Flag = "ScriptDropdown",
     Callback = function(Options)
@@ -53,10 +53,10 @@ local Button = Tab:CreateButton({
         if SelectedOption == "Script 1" then
             loadstring(game:HttpGet('https://raw.githubusercontent.com/wipff2/utg/refs/heads/main/button2Enc'))()
         elseif SelectedOption == "Script 2" then
-            loadstring(game:HttpGet('https://raw.githubusercontent.com/wipff2/utg/refs/heads/main/rayfEnc.lua'))()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/nAlwspa/Into/refs/heads/main/tag.lua'))()
         elseif SelectedOption == "Both" then
             loadstring(game:HttpGet('https://raw.githubusercontent.com/wipff2/utg/refs/heads/main/button2Enc'))()
-            loadstring(game:HttpGet('https://raw.githubusercontent.com/wipff2/utg/refs/heads/main/rayfEnc.lua'))()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/nAlwspa/Into/refs/heads/main/tag.lua'))()
         end
 
         -- Hancurkan UI setelah eksekusi script
