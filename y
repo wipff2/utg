@@ -372,6 +372,11 @@ local function createESP(player)
     local playerRole = player:FindFirstChild("PlayerRole")    
     local localRole = localPlayer:FindFirstChild("PlayerRole")    
 
+    -- Cek apakah role adalah "Dead", jika ya maka return    
+    if playerRole and playerRole.Value == "Dead" then    
+        return    
+    end    
+
     if teamCheck and localRole and playerRole and localRole.Value == playerRole.Value then    
         return    
     end    
@@ -400,6 +405,13 @@ local function createESP(player)
                 return    
             end    
 
+            -- Pastikan kembali bahwa peran tidak "Dead" saat ESP diperbarui
+            if playerRole and playerRole.Value == "Dead" then
+                billboard:Destroy()
+                espObjects[player] = nil
+                return
+            end
+
             local displayText = ""    
             if espNameEnabled then    
                 displayText = player.Name    
@@ -416,7 +428,6 @@ local function createESP(player)
         end)    
     end    
 end
-
 RunService.RenderStepped:Connect(
     function()
         if not espEnabled then
