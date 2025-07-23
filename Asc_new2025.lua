@@ -115,7 +115,10 @@ local roleTagRules = {
     RedTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "OrangeTeam"},
    OrangeTeam  = {"BlueTeam", "YellowTeam", "PurpleTeam", "RedTeam"}
 }
-
+local Paragraph =
+    Tab:CreateParagraph(
+    {Title = "get ban?", Content = "1.executor issue ,2.you get ban before in you device,3.script outdate"}
+)
 local ToggleTag =
     Tab:CreateToggle(
     {
@@ -359,6 +362,29 @@ local function shouldStopTagging()
 
     return false
 end
+local function getLowestHealthTarget()
+    local lowestHealth = math.huge
+    local targetPlayer = nil
+
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if isValidTarget(player) then
+            local character = player.Character
+            local humanoid = character and character:FindFirstChild("Humanoid")
+            local targetHRP = character and character:FindFirstChild("HumanoidRootPart")
+            local localHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if humanoid and targetHRP and localHRP then
+                local distance = (localHRP.Position - targetHRP.Position).Magnitude
+                if distance <= tagAuraRange and humanoid.Health < lowestHealth then
+                    lowestHealth = humanoid.Health
+                    targetPlayer = player
+                end
+            end
+        end
+    end
+
+    return targetPlayer
+end
 
 local function canTag(player)
     local values = ReplicatedStorage:FindFirstChild("Values")
@@ -499,6 +525,19 @@ local function tagPlayer(player)
         warn("Error tagging:", response)
     end
 end
+local RunService = game:GetService("RunService")
+
+RunService.Heartbeat:Connect(function()
+    if tagEnabled and not shouldStopTagging() then
+        local target = getLowestHealthTarget()
+        if target then
+            tagPlayer(target)
+        end
+    end
+
+    updatePOVCircle()
+end)
+
 local Section = Tab:CreateSection("Pov")
 -- UI Elements
 local TogglePOVCircleEnabled =
