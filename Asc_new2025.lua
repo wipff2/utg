@@ -362,29 +362,6 @@ local function shouldStopTagging()
 
     return false
 end
-local function getLowestHealthTarget()
-    local lowestHealth = math.huge
-    local targetPlayer = nil
-
-    for _, player in ipairs(game.Players:GetPlayers()) do
-        if isValidTarget(player) then
-            local character = player.Character
-            local humanoid = character and character:FindFirstChild("Humanoid")
-            local targetHRP = character and character:FindFirstChild("HumanoidRootPart")
-            local localHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-            if humanoid and targetHRP and localHRP then
-                local distance = (localHRP.Position - targetHRP.Position).Magnitude
-                if distance <= tagAuraRange and humanoid.Health < lowestHealth then
-                    lowestHealth = humanoid.Health
-                    targetPlayer = player
-                end
-            end
-        end
-    end
-
-    return targetPlayer
-end
 
 local function canTag(player)
     local values = ReplicatedStorage:FindFirstChild("Values")
@@ -444,7 +421,29 @@ local function isValidTarget(player)
 
     return humanoid and humanoid.Health > 0 and targetHRP and canTag(player)
 end
+local function getLowestHealthTarget()
+    local lowestHealth = math.huge
+    local targetPlayer = nil
 
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if isValidTarget(player) then
+            local character = player.Character
+            local humanoid = character and character:FindFirstChild("Humanoid")
+            local targetHRP = character and character:FindFirstChild("HumanoidRootPart")
+            local localHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if humanoid and targetHRP and localHRP then
+                local distance = (localHRP.Position - targetHRP.Position).Magnitude
+                if distance <= tagAuraRange and humanoid.Health < lowestHealth then
+                    lowestHealth = humanoid.Health
+                    targetPlayer = player
+                end
+            end
+        end
+    end
+
+    return targetPlayer
+end
 local function tagPlayer(player)
     if not tagEnabled or not isValidTarget(player) or shouldStopTagging() then
         return
@@ -929,10 +928,12 @@ local function updateESPDisplay(player)
         displayText = displayText ~= "" and (displayText .. "\n" .. roleValue) or roleValue
     end
 
-    espObjects[player].label.Text = displayText
-    espObjects[player].label.TextColor3 = getRoleColor(roleValue)
-    espObjects[player].gui.Size = UDim2.new(espConfig.size, 0, espConfig.size / 4, 0)
-    espObjects[player].gui.Adornee = hrp
+    if espObjects[player] and espObjects[player].label then
+        espObjects[player].label.Text = displayText
+        espObjects[player].label.TextColor3 = getRoleColor(roleValue)
+        espObjects[player].gui.Size = UDim2.new(espConfig.size, 0, espConfig.size / 4, 0)
+        espObjects[player].gui.Adornee = hrp
+    end
 end
 -- Improved queueUpdate function
 local function queueUpdate(player)
