@@ -547,7 +547,7 @@ local lastGlobalTagTime = 0
 
 RunService.Heartbeat:Connect(function()
     local now = tick()
-    if tagEnabled and now - lastGlobalTagTime > 0.5 and not shouldStopTagging() then
+    if tagEnabled and now - lastGlobalTagTime > 0.9 and not shouldStopTagging() then
         local target = getLowestHealthTarget()
         if target then
             tagPlayer(target)
