@@ -58,6 +58,7 @@ local teamCheck = false
 local legitTag = false
 local roleFilterEnabled = false
 local stopDuringVoting = false
+local lastGlobalTagTime = 0
 
 -- POV Circle Settings
 local povCircleEnabled = false
@@ -67,7 +68,7 @@ local povCircleThickness = 1 -- pixels
 local povCircleColor = Color3.fromRGB(255, 50, 50)
 local povCircleTransparency = 1
 local rainbowColorEnabled = true
-local rainbowColorSpeed = 1
+local rainbowColorSpeed = 0.6
 
 local roleTagRules = {
     Crown = {"Neutral", "Frozen"},
@@ -452,7 +453,6 @@ local function getLowestHealthTarget()
     end
 
     if targetPlayer then
-        print("[DEBUG] Lowest HP target:", targetPlayer.Name, "with HP:", lowestHealth)
     end
 
     return targetPlayer
@@ -469,20 +469,17 @@ local function tagPlayer(player)
     end
 
     if player:GetAttribute("NoTagBack") then
-        print("[DEBUG] NoTagBack is active for:", player.Name)
         return
     end
 
     local currentTime = tick()
-    if lastTagTime[player] and currentTime - lastTagTime[player] < 0.5 then
-        print("[DEBUG] Tag cooldown active for:", player.Name)
+    if lastTagTime[player] and currentTime - lastTagTime[player] < 1 then
         return
     end
 
     local localCharacter = localPlayer.Character
     local targetCharacter = player.Character
     if not localCharacter or not targetCharacter then
-        print("[DEBUG] Character missing for:", player.Name)
         return
     end
 
@@ -490,7 +487,6 @@ local function tagPlayer(player)
     local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
     local targetHumanoid = targetCharacter:FindFirstChild("Humanoid")
     if not localHRP or not targetHRP or not targetHumanoid then
-        print("[DEBUG] HRP/Humanoid missing for:", player.Name)
         return
     end
 
@@ -500,7 +496,6 @@ local function tagPlayer(player)
         return
     end
 
-    print("[DEBUG] Attempting to tag:", player.Name)
     local args = {
         [1] = targetHumanoid,
         [2] = targetHRP.Position
@@ -511,7 +506,6 @@ local function tagPlayer(player)
     end)
 
     if success then
-        print("[DEBUG] Tag successful:", player.Name)
         lastTagTime[player] = currentTime
 
         if legitTag then
@@ -531,7 +525,6 @@ local function tagPlayer(player)
                         end
                         if not isPlaying then
                             animation:Play()
-                            print("[DEBUG] Playing legit tag animation")
                         end
                     end
                 end
@@ -542,8 +535,6 @@ local function tagPlayer(player)
     end
 end
 local RunService = game:GetService("RunService")
-
-local lastGlobalTagTime = 0
 
 RunService.Heartbeat:Connect(function()
     local now = tick()
@@ -2024,7 +2015,7 @@ local Tab = Window:CreateTab("Tool", 4483362458)
 local Section = Tab:CreateSection("Gun")
 local Paragraph =
     Tab:CreateParagraph(
-    {Title = "info", Content = "this feature for horde gamemode Paintball gun."}
+    {Title = "info", Content = "this feature for horde gamemode Paintball gun (unstable)."}
 )
 local player = game:GetService("Players").LocalPlayer
 local runService = game:GetService("RunService")
@@ -2073,10 +2064,7 @@ local Toggle =
         Callback = function(Value)
             toggle = Value
             if toggle then
-                print("Auto Shoot ON")
                 task.spawn(autoShoot) -- Gunakan task.spawn agar tidak freeze UI
-            else
-                print("Auto Shoot OFF")
             end
         end
     }
@@ -2472,7 +2460,7 @@ local Button =
                 initializeESP()
             end
 
-            print("[SUCCESS] cleared!")
+            
         end
     }
 )
