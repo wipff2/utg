@@ -442,6 +442,7 @@ local function getLowestHealthTarget()
 
             if humanoid and targetHRP and localHRP then
                 local distance = (localHRP.Position - targetHRP.Position).Magnitude
+                print(string.format("[DEBUG] Checking %s - Distance: %.2f, Health: %.2f", player.Name, distance, humanoid.Health))
                 if distance <= tagAuraRange and humanoid.Health < lowestHealth then
                     lowestHealth = humanoid.Health
                     targetPlayer = player
@@ -450,68 +451,75 @@ local function getLowestHealthTarget()
         end
     end
 
+    if targetPlayer then
+        print("[DEBUG] Lowest HP target:", targetPlayer.Name, "with HP:", lowestHealth)
+    end
+
     return targetPlayer
 end
+
 local function tagPlayer(player)
     if not tagEnabled or not isValidTarget(player) or shouldStopTagging() then
         return
     end
 
-    -- POV Circle check (only when enabled)
     if povCircleEnabled and not isPlayerInCenter(player) then
+        print("[DEBUG] Target not in POV circle:", player.Name)
         return
     end
 
     if player:GetAttribute("NoTagBack") then
+        print("[DEBUG] NoTagBack is active for:", player.Name)
         return
     end
 
     local currentTime = tick()
     if lastTagTime[player] and currentTime - lastTagTime[player] < 0.5 then
+        print("[DEBUG] Tag cooldown active for:", player.Name)
         return
     end
 
     local localCharacter = localPlayer.Character
     local targetCharacter = player.Character
     if not localCharacter or not targetCharacter then
+        print("[DEBUG] Character missing for:", player.Name)
         return
     end
 
     local localHRP = localCharacter:FindFirstChild("HumanoidRootPart")
     local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
     local targetHumanoid = targetCharacter:FindFirstChild("Humanoid")
-
     if not localHRP or not targetHRP or not targetHumanoid then
+        print("[DEBUG] HRP/Humanoid missing for:", player.Name)
         return
     end
 
     local distance = (localHRP.Position - targetHRP.Position).Magnitude
     if distance > tagAuraRange then
+        print(string.format("[DEBUG] Target too far (%.2f studs): %s", distance, player.Name))
         return
     end
 
+    print("[DEBUG] Attempting to tag:", player.Name)
     local args = {
         [1] = targetHumanoid,
         [2] = targetHRP.Position
     }
 
-    local success, response =
-        pcall(
-        function()
-            return tagEventPath:InvokeServer(unpack(args))
-        end
-    )
+    local success, response = pcall(function()
+        return tagEventPath:InvokeServer(unpack(args))
+    end)
 
     if success then
+        print("[DEBUG] Tag successful:", player.Name)
         lastTagTime[player] = currentTime
+
         if legitTag then
-            local animFolder =
-                ReplicatedStorage:FindFirstChild("Animations") and ReplicatedStorage.Animations:FindFirstChild("Base")
+            local animFolder = ReplicatedStorage:FindFirstChild("Animations") and ReplicatedStorage.Animations:FindFirstChild("Base")
             if animFolder then
                 local tagAnim = animFolder:FindFirstChild("Tag1") or animFolder:FindFirstChild("Tag2")
                 if tagAnim then
-                    local animator =
-                        localCharacter:FindFirstChild("Humanoid") and localCharacter.Humanoid:FindFirstChild("Animator")
+                    local animator = localCharacter:FindFirstChild("Humanoid") and localCharacter.Humanoid:FindFirstChild("Animator")
                     if animator then
                         local animation = animator:LoadAnimation(tagAnim)
                         local isPlaying = false
@@ -523,13 +531,14 @@ local function tagPlayer(player)
                         end
                         if not isPlaying then
                             animation:Play()
+                            print("[DEBUG] Playing legit tag animation")
                         end
                     end
                 end
             end
         end
     else
-        warn("Error tagging:", response)
+        warn("[ERROR] Failed to tag:", player.Name, "Error:", response)
     end
 end
 local RunService = game:GetService("RunService")
@@ -2011,6 +2020,10 @@ Tab:CreateToggle(
 local Tab = Window:CreateTab("Tool", 4483362458)
 ------------------------------------------------------------
 local Section = Tab:CreateSection("Gun")
+local Paragraph =
+    Tab:CreateParagraph(
+    {Title = "info", Content = "this feature for horde gamemode Paintball gun."}
+)
 local player = game:GetService("Players").LocalPlayer
 local runService = game:GetService("RunService")
 local toggle = false
