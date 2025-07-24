@@ -1878,6 +1878,7 @@ local tpwalking = false
 local walktpSpeed = 1 -- Default speed = 1
 
 -- Toggle
+local TPWalkToggle =
 Tab:CreateToggle(
     {
         Name = "Speed Boost",
@@ -2516,6 +2517,9 @@ local Button =
             end
             if ToggleLine then
                 ToggleLine:Set(false)
+            end
+            if TPWalkToggle then
+                TPWalkToggle:Set(false)
             end
 
             -- Clear ESP and other visual elements
