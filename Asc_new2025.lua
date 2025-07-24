@@ -119,6 +119,14 @@ local Paragraph =
     Tab:CreateParagraph(
     {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate"}
 )
+local Paragraph =
+    Tab:CreateParagraph(
+    {Title = "warning", Content = "Please use it at your own discretion."}
+)
+local Paragraph =
+    Tab:CreateParagraph(
+    {Title = "warning2", Content = "use good executor like delta."}
+)
 local ToggleTag =
     Tab:CreateToggle(
     {
@@ -2457,9 +2465,9 @@ local Section = Tab:CreateSection("Profile")
 local Label = Tab:CreateLabel("Youtube:Rof_r", "contact-round", Color3.fromRGB(0, 0, 255), false)
 local Section = Tab:CreateSection("Sosial Media")
 local Paragraph = Tab:CreateParagraph({Title = "Youtube Channel", Content = "youtube.com/@Rof_R"})
-local Paragraph = Tab:CreateParagraph({Title = "Discord Invite Link", Content = ".gg/ffbZfWxM"})
+local Paragraph = Tab:CreateParagraph({Title = "Discord Invite Link", Content = "discord.gg/gNyn7Gpn"})
 local Paragraph = Tab:CreateParagraph({Title = "Tiktok Profile", Content = "-"})
-local Label = Tab:CreateLabel("Last Update:13/4/2025", "flag", Color3.fromRGB(0, 0, 0), false)
+local Label = Tab:CreateLabel("Last Update:22/07/2025", "flag", Color3.fromRGB(0, 0, 0), false)
 ------------------------------------------------------------
 ------------------------------------------------------------
 --------------------Panic Mode --------------------
