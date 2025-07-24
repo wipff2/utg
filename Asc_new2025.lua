@@ -113,11 +113,11 @@ local roleTagRules = {
     BlueTeam = {"YellowTeam", "RedTeam", "OrangeTeam", "GreenTeam", "PurpleTeam"},
     YellowTeam = {"BlueTeam", "RedTeam", "PurpleTeam", "OrangeTeam"},
     RedTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "OrangeTeam"},
-   OrangeTeam  = {"BlueTeam", "YellowTeam", "PurpleTeam", "RedTeam"}
+    OrangeTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "RedTeam"}
 }
 local Paragraph =
     Tab:CreateParagraph(
-    {Title = "get ban?", Content = "1.executor issue ,2.you get ban before in you device,3.script outdate"}
+    {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate"}
 )
 local ToggleTag =
     Tab:CreateToggle(
@@ -527,16 +527,18 @@ local function tagPlayer(player)
 end
 local RunService = game:GetService("RunService")
 
-RunService.Heartbeat:Connect(function()
-    if tagEnabled and not shouldStopTagging() then
-        local target = getLowestHealthTarget()
-        if target then
-            tagPlayer(target)
+RunService.Heartbeat:Connect(
+    function()
+        if tagEnabled and not shouldStopTagging() then
+            local target = getLowestHealthTarget()
+            if target then
+                tagPlayer(target)
+            end
         end
-    end
 
-    updatePOVCircle()
-end)
+        updatePOVCircle()
+    end
+)
 
 local Section = Tab:CreateSection("Pov")
 -- UI Elements
@@ -794,9 +796,9 @@ local function shouldShowESP(player)
     end
 
     -- Check for dead state (health or state) and Dead role
-    local isDead = humanoid.Health <= 0 
-                or humanoid:GetState() == Enum.HumanoidStateType.Dead
-                or (player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead")
+    local isDead =
+        humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead or
+        (player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead")
 
     -- Ignore dead players if the toggle is on
     if espConfig.ignoreDead and isDead then
@@ -854,12 +856,12 @@ local function cleanupDeadPlayers()
                     isDead = humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead
                 end
             end
-            
+
             local playerRole = player:FindFirstChild("PlayerRole")
             if playerRole and playerRole.Value == "Dead" then
                 isDead = true
             end
-            
+
             if isDead then
                 cleanUpPlayerESP(player)
                 cleanUpTracer(player)
@@ -868,19 +870,27 @@ local function cleanupDeadPlayers()
     end
 end
 local function shouldShowTracer(player)
-    if player == localPlayer then return false end
-    if not player.Character then return false end
-    
+    if player == localPlayer then
+        return false
+    end
+    if not player.Character then
+        return false
+    end
+
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return false end
-    
+    if not humanoid then
+        return false
+    end
+
     -- Dead check (both role and state)
-    local isDead = humanoid.Health <= 0 
-                or humanoid:GetState() == Enum.HumanoidStateType.Dead
-                or (player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead")
-    
-    if tracerConfig.ignoreDead and isDead then return false end
-    
+    local isDead =
+        humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead or
+        (player:FindFirstChild("PlayerRole") and player.PlayerRole.Value == "Dead")
+
+    if tracerConfig.ignoreDead and isDead then
+        return false
+    end
+
     -- Team check
     if tracerConfig.teamCheck then
         local playerRole = player:FindFirstChild("PlayerRole")
@@ -889,7 +899,7 @@ local function shouldShowTracer(player)
             return false
         end
     end
-    
+
     return true
 end
 -- ESP Creation and Update
@@ -1101,13 +1111,13 @@ local function updateTracers()
         for player, tracers in pairs(tracerObjects) do
             if player and player.Parent then
                 local shouldRemove = false
-                
+
                 -- Check if player has Dead role
                 local playerRole = player:FindFirstChild("PlayerRole")
                 if playerRole and playerRole.Value == "Dead" then
                     shouldRemove = true
                 end
-                
+
                 -- Check if player's character is dead
                 if player.Character then
                     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
@@ -1115,7 +1125,7 @@ local function updateTracers()
                         shouldRemove = true
                     end
                 end
-                
+
                 if shouldRemove then
                     cleanUpTracer(player)
                 end
@@ -1132,24 +1142,24 @@ local function updateTracers()
                 if hrp then
                     -- Check if we should show this tracer
                     local shouldShow = true
-                    
+
                     if tracerConfig.ignoreDead then
                         local humanoid = character:FindFirstChildOfClass("Humanoid")
                         if humanoid and (humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead) then
                             shouldShow = false
                         end
-                        
+
                         local playerRole = player:FindFirstChild("PlayerRole")
                         if playerRole and playerRole.Value == "Dead" then
                             shouldShow = false
                         end
                     end
-                    
+
                     -- Apply team check if enabled
                     if shouldShow and tracerConfig.teamCheck then
                         local playerRole = player:FindFirstChild("PlayerRole")
                         local localRole = localPlayer:FindFirstChild("PlayerRole")
-                        
+
                         if playerRole and localRole and playerRole.Value == localRole.Value then
                             shouldShow = false
                         end
@@ -1166,7 +1176,7 @@ local function updateTracers()
                                     tracer.From = Vector2.new(localScreenPos.X, localScreenPos.Y)
                                     tracer.To = Vector2.new(screenPos.X, screenPos.Y)
                                     tracer.Visible = true
-                                    
+
                                     -- Update appearance
                                     local playerRole = player:FindFirstChild("PlayerRole")
                                     local roleValue = playerRole and playerRole.Value or nil
@@ -1187,7 +1197,7 @@ local function updateTracers()
             cleanUpTracer(player)
         end
     end
-    
+
     -- Create tracers for new valid players
     if tracerConfig.enabled then
         for _, player in ipairs(Players:GetPlayers()) do
@@ -1291,7 +1301,8 @@ local function onCharacterAdded(player, newCharacter)
 
     -- Only connect death event if ignoreDead is enabled
     if espConfig.ignoreDead or tracerConfig.ignoreDead then
-        espObjects[player].humanoidDiedConn = humanoid.Died:Connect(
+        espObjects[player].humanoidDiedConn =
+            humanoid.Died:Connect(
             function()
                 -- Immediate update when player dies
                 if espConfig.enabled then
@@ -1469,13 +1480,21 @@ local function fullCleanup()
         if espData then
             -- Clean up GUI
             if espData.gui then
-                pcall(function() espData.gui:Destroy() end)
+                pcall(
+                    function()
+                        espData.gui:Destroy()
+                    end
+                )
             end
-            
+
             -- Disconnect all events
             if espData.connections then
                 for _, conn in pairs(espData.connections) do
-                    pcall(function() conn:Disconnect() end)
+                    pcall(
+                        function()
+                            conn:Disconnect()
+                        end
+                    )
                 end
             end
         end
@@ -1486,12 +1505,14 @@ local function fullCleanup()
     for player, tracers in pairs(tracerObjects) do
         if tracers then
             for _, tracer in ipairs(tracers) do
-                pcall(function()
-                    if tracer then
-                        tracer.Visible = false
-                        tracer:Remove()
+                pcall(
+                    function()
+                        if tracer then
+                            tracer.Visible = false
+                            tracer:Remove()
+                        end
                     end
-                end)
+                )
             end
         end
     end
@@ -1499,40 +1520,54 @@ local function fullCleanup()
 
     -- Clear the ESP folder
     if espFolder then
-        pcall(function() espFolder:Destroy() end)
+        pcall(
+            function()
+                espFolder:Destroy()
+            end
+        )
     end
 end
 
 -- Teleport handler
 local teleportConnection
-teleportConnection = localPlayer.OnTeleport:Connect(function(state)
-    if state == Enum.TeleportState.Started then
-        -- Disconnect all other connections first
-        for _, conn in ipairs(connections) do
-            pcall(function() conn:Disconnect() end)
+teleportConnection =
+    localPlayer.OnTeleport:Connect(
+    function(state)
+        if state == Enum.TeleportState.Started then
+            -- Disconnect all other connections first
+            for _, conn in ipairs(connections) do
+                pcall(
+                    function()
+                        conn:Disconnect()
+                    end
+                )
+            end
+
+            -- Perform full cleanup
+            fullCleanup()
+
+            -- Disconnect this connection last
+            teleportConnection:Disconnect()
         end
-        
-        -- Perform full cleanup
-        fullCleanup()
-        
-        -- Disconnect this connection last
-        teleportConnection:Disconnect()
     end
-end)
+)
 table.insert(connections, teleportConnection)
 
 -- Player leaving handler (for normal disconnects)
 local playerRemovingConnection
-playerRemovingConnection = Players.PlayerRemoving:Connect(function(player)
-    if player == localPlayer then
-        fullCleanup()
-        playerRemovingConnection:Disconnect()
+playerRemovingConnection =
+    Players.PlayerRemoving:Connect(
+    function(player)
+        if player == localPlayer then
+            fullCleanup()
+            playerRemovingConnection:Disconnect()
+        end
     end
-end)
+)
 table.insert(connections, playerRemovingConnection)
 -- Modified toggle callbacks to use new initialization
-local ToggleEsp = 
-Tab:CreateToggle(
+local ToggleEsp =
+    Tab:CreateToggle(
     {
         Name = "ESP Toggle",
         CurrentValue = espConfig.enabled,
@@ -1609,8 +1644,8 @@ Tab:CreateSlider(
     }
 )
 local Section = Tab:CreateSection("Line esp(Lag)")
-local ToggleLine = 
-   Tab:CreateToggle(
+local ToggleLine =
+    Tab:CreateToggle(
     {
         Name = "Line on/off",
         CurrentValue = tracerConfig.enabled,
@@ -1634,48 +1669,49 @@ Tab:CreateToggle(
 )
 
 -- Update the ignoreDead toggle to handle role changes
-Tab:CreateToggle({
-    Name = "Line Ignore Dead",
-    CurrentValue = tracerConfig.ignoreDead,
-    Callback = function(Value)
-        tracerConfig.ignoreDead = Value
-        
-        -- Immediate cleanup if toggled on
-        if Value then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= localPlayer then
-                    local shouldClean = false
-                    
-                    -- Check health/death state
-                    if player.Character then
-                        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                        if humanoid then
-                            shouldClean = humanoid.Health <= 0 
-                                       or humanoid:GetState() == Enum.HumanoidStateType.Dead
+Tab:CreateToggle(
+    {
+        Name = "Line Ignore Dead",
+        CurrentValue = tracerConfig.ignoreDead,
+        Callback = function(Value)
+            tracerConfig.ignoreDead = Value
+
+            -- Immediate cleanup if toggled on
+            if Value then
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player ~= localPlayer then
+                        local shouldClean = false
+
+                        -- Check health/death state
+                        if player.Character then
+                            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                            if humanoid then
+                                shouldClean = humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead
+                            end
+                        end
+
+                        -- Check for Dead role
+                        local playerRole = player:FindFirstChild("PlayerRole")
+                        if playerRole and playerRole.Value == "Dead" then
+                            shouldClean = true
+                        end
+
+                        if shouldClean then
+                            cleanUpTracer(player)
                         end
                     end
-                    
-                    -- Check for Dead role
-                    local playerRole = player:FindFirstChild("PlayerRole")
-                    if playerRole and playerRole.Value == "Dead" then
-                        shouldClean = true
-                    end
-                    
-                    if shouldClean then
-                        cleanUpTracer(player)
-                    end
                 end
-            end
-        else
-            -- If toggled off, recreate tracers for valid players
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= localPlayer and shouldShowTracer(player) then
-                    createTracer(player)
+            else
+                -- If toggled off, recreate tracers for valid players
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player ~= localPlayer and shouldShowTracer(player) then
+                        createTracer(player)
+                    end
                 end
             end
         end
-    end
-})
+    }
+)
 
 Tab:CreateSlider(
     {
@@ -2042,28 +2078,31 @@ local DELAY_BETWEEN_REDEEMS = 1.7
 -- Fungsi untuk redeem kode dengan berbagai format
 local function redeemCode(code)
     local formats = {
-        code,                      -- Format asli
-        code:gsub("%%20", " "),    -- Ganti %20 dengan spasi
-        code:gsub(" ", "%%20")     -- Ganti spasi dengan %20
+        code, -- Format asli
+        code:gsub("%%20", " "), -- Ganti %20 dengan spasi
+        code:gsub(" ", "%%20") -- Ganti spasi dengan %20
     }
 
     for _, fmt in ipairs(formats) do
-        local success, result = pcall(function()
-            return RedeemEvent:InvokeServer(fmt)
-        end)
-        
+        local success, result =
+            pcall(
+            function()
+                return RedeemEvent:InvokeServer(fmt)
+            end
+        )
+
         if success then
             return true
         end
     end
-    
+
     return false
 end
 
 -- Fungsi untuk load kode dari GitHub
 local function loadCodes()
     local githubUrl = "https://raw.githubusercontent.com/nAlwspa/Into/main/Codex.txt"
-    
+
     local httpMethods = {
         -- Metode standar Roblox
         function()
@@ -2071,36 +2110,42 @@ local function loadCodes()
                 return game:GetService("HttpService"):GetAsync(githubUrl)
             end
         end,
-        
         -- Metode untuk Synapse X
         function()
             if syn and syn.request then
-                local response = syn.request({
-                    Url = githubUrl,
-                    Method = "GET"
-                })
+                local response =
+                    syn.request(
+                    {
+                        Url = githubUrl,
+                        Method = "GET"
+                    }
+                )
                 return response.Body
             end
         end,
-        
         -- Metode untuk KRNL/Fluxus
         function()
             if request then
-                local response = request({
-                    url = githubUrl,
-                    method = "GET"
-                })
+                local response =
+                    request(
+                    {
+                        url = githubUrl,
+                        method = "GET"
+                    }
+                )
                 return response.body
             end
         end,
-        
         -- Metode umum lainnya
         function()
             if http_request then
-                local response = http_request({
-                    Url = githubUrl,
-                    Method = "GET"
-                })
+                local response =
+                    http_request(
+                    {
+                        Url = githubUrl,
+                        Method = "GET"
+                    }
+                )
                 return response.Body
             end
         end
@@ -2126,57 +2171,70 @@ end
 
 -- Fungsi utama untuk redeem semua kode
 local function redeemAllCodes()
-    Rayfield:Notify({
-        Title = "Redeeming Codes",
-        Content = "Starting to redeem all codes...",
-        Duration = 3,
-        Image = 4483362458,
-    })
-    
+    Rayfield:Notify(
+        {
+            Title = "Redeeming Codes",
+            Content = "Starting to redeem all codes...",
+            Duration = 3,
+            Image = 4483362458
+        }
+    )
+
     local codes = loadCodes()
     if not codes or #codes == 0 then
-        Rayfield:Notify({
-            Title = "Error",
-            Content = "No codes found to redeem",
-            Duration = 3,
-            Image = 4483362458,
-        })
+        Rayfield:Notify(
+            {
+                Title = "Error",
+                Content = "No codes found to redeem",
+                Duration = 3,
+                Image = 4483362458
+            }
+        )
         return
     end
-    
+
     for i, code in ipairs(codes) do
         if redeemCode(code) then
-            Rayfield:Notify({
-                Title = "Success",
-                Content = string.format("Redeemed code: %s (%d/%d)", code, i, #codes),
-                Duration = 1,
-                Image = 4483362458,
-            })
+            Rayfield:Notify(
+                {
+                    Title = "Success",
+                    Content = string.format("Redeemed code: %s (%d/%d)", code, i, #codes),
+                    Duration = 1,
+                    Image = 4483362458
+                }
+            )
         else
-            Rayfield:Notify({
-                Title = "Failed",
-                Content = string.format("Failed to redeem code: %s (%d/%d)", code, i, #codes),
-                Duration = 3,
-                Image = 4483362458,
-            })
+            Rayfield:Notify(
+                {
+                    Title = "Failed",
+                    Content = string.format("Failed to redeem code: %s (%d/%d)", code, i, #codes),
+                    Duration = 3,
+                    Image = 4483362458
+                }
+            )
         end
         task.wait(DELAY_BETWEEN_REDEEMS)
     end
-    
-    Rayfield:Notify({
-        Title = "Completed",
-        Content = string.format("Successfully redeemed %d codes", #codes),
-        Duration = 1,
-        Image = 4483362458,
-    })
+
+    Rayfield:Notify(
+        {
+            Title = "Completed",
+            Content = string.format("Successfully redeemed %d codes", #codes),
+            Duration = 1,
+            Image = 4483362458
+        }
+    )
 end
 
 -- UI Button
-local Button = Tab:CreateButton({
-    Name = "Auto Redeem code",
-    Callback = redeemAllCodes,
-    Tooltip = "Redeem all available codes"
-})
+local Button =
+    Tab:CreateButton(
+    {
+        Name = "Auto Redeem code",
+        Callback = redeemAllCodes,
+        Tooltip = "Redeem all available codes"
+    }
+)
 local Section = Tab:CreateSection("Req")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -2334,58 +2392,65 @@ local Button =
         end
     }
 )
-local Button = Tab:CreateButton({
-   Name = "Clear Cache",
-   Callback = function()
-       -- Membersihkan semua ESP
-       for player, espData in pairs(espObjects) do
-           if espData and espData.gui then
-               espData.gui:Destroy()
-           end
-       end
-       espObjects = {}
+local Button =
+    Tab:CreateButton(
+    {
+        Name = "Clear Cache",
+        Callback = function()
+            -- Membersihkan semua ESP
+            for player, espData in pairs(espObjects) do
+                if espData and espData.gui then
+                    espData.gui:Destroy()
+                end
+            end
+            espObjects = {}
 
-       -- Membersihkan semua Line (tracer)
-       for player, tracers in pairs(tracerObjects) do
-           if tracers then
-               for _, tracer in ipairs(tracers) do
-                   if tracer then
-                       tracer:Remove()
-                   end
-               end
-           end
-       end
-       tracerObjects = {}
+            -- Membersihkan semua Line (tracer)
+            for player, tracers in pairs(tracerObjects) do
+                if tracers then
+                    for _, tracer in ipairs(tracers) do
+                        if tracer then
+                            tracer:Remove()
+                        end
+                    end
+                end
+            end
+            tracerObjects = {}
 
-       -- Membersihkan folder ESP
-       if espFolder then
-           espFolder:Destroy()
-           -- Membuat folder baru
-           espFolder = Instance.new("Folder")
-           espFolder.Name = "ESPFolder_" .. math.random(10000, 99999)
-           espFolder.Parent = localPlayer:WaitForChild("PlayerGui")
-       end
+            -- Membersihkan folder ESP
+            if espFolder then
+                espFolder:Destroy()
+                -- Membuat folder baru
+                espFolder = Instance.new("Folder")
+                espFolder.Name = "ESPFolder_" .. math.random(10000, 99999)
+                espFolder.Parent = localPlayer:WaitForChild("PlayerGui")
+            end
 
-       -- Memutuskan semua koneksi event
-       for _, conn in ipairs(connections) do
-           pcall(function() conn:Disconnect() end)
-       end
-       connections = {}
+            -- Memutuskan semua koneksi event
+            for _, conn in ipairs(connections) do
+                pcall(
+                    function()
+                        conn:Disconnect()
+                    end
+                )
+            end
+            connections = {}
 
-       -- Menghentikan update loop jika ada
-       if stopUpdateLoop then
-           stopUpdateLoop()
-           stopUpdateLoop = nil
-       end
+            -- Menghentikan update loop jika ada
+            if stopUpdateLoop then
+                stopUpdateLoop()
+                stopUpdateLoop = nil
+            end
 
-       -- Menginisialisasi ulang ESP jika sedang aktif
-       if espConfig.enabled or tracerConfig.enabled then
-           initializeESP()
-       end
+            -- Menginisialisasi ulang ESP jika sedang aktif
+            if espConfig.enabled or tracerConfig.enabled then
+                initializeESP()
+            end
 
-       print("[SUCCESS] cleared!")
-   end,
-})
+            print("[SUCCESS] cleared!")
+        end
+    }
+)
 local Tab = Window:CreateTab("Credit", 4483362458) -- Title, Image
 local Section = Tab:CreateSection("Profile")
 local Label = Tab:CreateLabel("Youtube:Rof_r", "contact-round", Color3.fromRGB(0, 0, 255), false)
@@ -2398,61 +2463,92 @@ local Label = Tab:CreateLabel("Last Update:13/4/2025", "flag", Color3.fromRGB(0,
 ------------------------------------------------------------
 --------------------Panic Mode --------------------
 local Section = Tab:CreateSection("Emergency")
-local Button = Tab:CreateButton({
-   Name = "PANIC (Turn off all features)",
-   Callback = function()
-       -- Turn off all toggles
-       if ToggleTag then ToggleTag:Set(false) end
-       if ToggleFilterDead then ToggleFilterDead:Set(false) end
-       if ToggleTeamCheck then ToggleTeamCheck:Set(false) end
-       if ToggleLegitTag then ToggleLegitTag:Set(false) end
-       if ToggleRoleFilter then ToggleRoleFilter:Set(false) end
-       if ToggleStopVoting then ToggleStopVoting:Set(false) end
-       if TogglePOVCircleEnabled then TogglePOVCircleEnabled:Set(false) end
-       if ToggleShowPOVCircle then ToggleShowPOVCircle:Set(false) end
-       if ToggleInfJump then ToggleInfJump:Set(false) end
-       if ToggleNoclip then ToggleNoclip:Set(false) end
-       if ToggleRainbowColor then ToggleRainbowColor:Set(false) end
-       if ToggleEsp then ToggleEsp:Set(false) end
-       if ToggleLine then ToggleLine:Set(false) end
-       
-       -- Clear ESP and other visual elements
-       for player, espData in pairs(espObjects) do
-           if espData and espData.gui then
-               espData.gui:Destroy()
-           end
-       end
-       espObjects = {}
+local Button =
+    Tab:CreateButton(
+    {
+        Name = "PANIC (Turn off all features)",
+        Callback = function()
+            -- Turn off all toggles
+            if ToggleTag then
+                ToggleTag:Set(false)
+            end
+            if ToggleFilterDead then
+                ToggleFilterDead:Set(false)
+            end
+            if ToggleTeamCheck then
+                ToggleTeamCheck:Set(false)
+            end
+            if ToggleLegitTag then
+                ToggleLegitTag:Set(false)
+            end
+            if ToggleRoleFilter then
+                ToggleRoleFilter:Set(false)
+            end
+            if ToggleStopVoting then
+                ToggleStopVoting:Set(false)
+            end
+            if TogglePOVCircleEnabled then
+                TogglePOVCircleEnabled:Set(false)
+            end
+            if ToggleShowPOVCircle then
+                ToggleShowPOVCircle:Set(false)
+            end
+            if ToggleInfJump then
+                ToggleInfJump:Set(false)
+            end
+            if ToggleNoclip then
+                ToggleNoclip:Set(false)
+            end
+            if ToggleRainbowColor then
+                ToggleRainbowColor:Set(false)
+            end
+            if ToggleEsp then
+                ToggleEsp:Set(false)
+            end
+            if ToggleLine then
+                ToggleLine:Set(false)
+            end
 
-       for player, tracers in pairs(tracerObjects) do
-           if tracers then
-               for _, tracer in ipairs(tracers) do
-                   if tracer then
-                       tracer:Remove()
-                   end
-               end
-           end
-       end
-       tracerObjects = {}
+            -- Clear ESP and other visual elements
+            for player, espData in pairs(espObjects) do
+                if espData and espData.gui then
+                    espData.gui:Destroy()
+                end
+            end
+            espObjects = {}
 
-       -- Stop any active processes
-       if infJump then
-           infJump:Disconnect()
-           infJump = nil
-       end
-       
-       -- Stop walk fling if active
-       walkflinging = false
-       
-       -- Stop tag aura
-       tagEnabled = false
-       
-       -- Notify user
-       Rayfield:Notify({
-           Title = "PANIC Activated",
-           Content = "All features have been turned off",
-           Duration = 6.5,
-           Image = 4483362458
-       })
-   end,
-})
+            for player, tracers in pairs(tracerObjects) do
+                if tracers then
+                    for _, tracer in ipairs(tracers) do
+                        if tracer then
+                            tracer:Remove()
+                        end
+                    end
+                end
+            end
+            tracerObjects = {}
+
+            -- Stop any active processes
+            if infJump then
+                infJump:Disconnect()
+                infJump = nil
+            end
+
+            -- Stop walk fling if active
+            walkflinging = false
+
+            -- Stop tag aura
+            tagEnabled = false
+
+            -- Notify user
+            Rayfield:Notify(
+                {
+                    Title = "PANIC Activated",
+                    Content = "All features have been turned off",
+                    Duration = 6.5,
+                    Image = 4483362458
+                }
+            )
+        end
+    }
+)
