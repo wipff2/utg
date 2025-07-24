@@ -442,7 +442,7 @@ local function getLowestHealthTarget()
 
             if humanoid and targetHRP and localHRP then
                 local distance = (localHRP.Position - targetHRP.Position).Magnitude
-                print(string.format("[DEBUG] Checking %s - Distance: %.2f, Health: %.2f", player.Name, distance, humanoid.Health))
+                
                 if distance <= tagAuraRange and humanoid.Health < lowestHealth then
                     lowestHealth = humanoid.Health
                     targetPlayer = player
@@ -464,7 +464,7 @@ local function tagPlayer(player)
     end
 
     if povCircleEnabled and not isPlayerInCenter(player) then
-        print("[DEBUG] Target not in POV circle:", player.Name)
+        
         return
     end
 
@@ -496,7 +496,7 @@ local function tagPlayer(player)
 
     local distance = (localHRP.Position - targetHRP.Position).Magnitude
     if distance > tagAuraRange then
-        print(string.format("[DEBUG] Target too far (%.2f studs): %s", distance, player.Name))
+        
         return
     end
 
@@ -543,18 +543,20 @@ local function tagPlayer(player)
 end
 local RunService = game:GetService("RunService")
 
-RunService.Heartbeat:Connect(
-    function()
-        if tagEnabled and not shouldStopTagging() then
-            local target = getLowestHealthTarget()
-            if target then
-                tagPlayer(target)
-            end
-        end
+local lastGlobalTagTime = 0
 
-        updatePOVCircle()
+RunService.Heartbeat:Connect(function()
+    local now = tick()
+    if tagEnabled and now - lastGlobalTagTime > 0.5 and not shouldStopTagging() then
+        local target = getLowestHealthTarget()
+        if target then
+            tagPlayer(target)
+            lastGlobalTagTime = now
+        end
     end
-)
+    updatePOVCircle()
+end)
+
 
 local Section = Tab:CreateSection("Pov")
 -- UI Elements
