@@ -46,10 +46,6 @@ local tagEventPath =
     ReplicatedStorage.Events.game:FindFirstChild("tags") and
     ReplicatedStorage.Events.game.tags:FindFirstChild("TagPlayer")
 
-if not tagEventPath then
-    warn("[ERROR] TagPlayer event not found!.")
-    return
-end
 local lastTagTime = {}
 local tagAuraRange = UserInputService.TouchEnabled and 8 or 9
 local tagEnabled = false
@@ -685,6 +681,193 @@ game:GetService("Players").PlayerRemoving:Connect(
         end
     end
 )
+-------------------- Hitbox --------------------
+local Tab = Window:CreateTab("Hitbox menu", 4483362458)
+local Section = Tab:CreateSection("Hitbox")
+------------------------------------------------------------
+-- UI & Config
+local hitboxEnabled = false
+local boxSize = 10
+local boxTransparency = 0.8
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local localPlayer = Players.LocalPlayer
+
+local roleTagRules = {
+    Crown = {"Neutral", "Frozen"},
+    SoloCrown = {"Neutral", "Frozen"},
+    Frozen = {"Freezer", "Chiller", "Infected", "Slasher", "Juggernaut", "Tagger"},
+    RedFrozen = {"Freezer", "Chiller", "Infected", "Slasher", "Juggernaut", "Tagger"},
+    BlueFrozen = {"Freezer", "Chiller", "Infected", "Slasher", "Juggernaut", "Tagger"},
+    Runner = {"Crown", "SoloCrown", "Frozen", "Neutral", "OnFire", "King"},
+    Tagger = {"Neutral", "Frozen", "Runner", "Neutral"},
+    Dead = {"Crown", "SoloCrown", "Headless"},
+    Infect = {"Runner", "Juggernauts", "Neutral"},
+    Infected = {"Runner", "Juggernauts", "Frozen", "Neutral"},
+    Freezer = {"Frozen", "Runner", "Neutral"},
+    Hunter = {"Juggernaut", "Neutral", "Survivor"},
+    PatientZero = {"Juggernaut", "Neutral", "Runner"},
+    Chiller = {"Neutral", "Runner", "Runners", "runner", "Frozen"},
+    Juggernaut = {"Runner", "Infected", "Neutral", "Frozen", "Hunter", "Survivor"},
+    Slasher = {"Juggernauts", "Runner", "Neutral", "Frozen"},
+    DisguisedTagger = {"Runner", "Neutral"},
+    Knight = {"Runner", "Peasent", "Peasant"},
+    Medic = {"Sick", "Peasent", "Infect", "Infected"},
+    Headless = {"Neutral", "Witch"},
+    Peasent = {"Knight", "Crown", "SoloCrown", "Headless"},
+    Alone = {"Alone", "Neutral", "Runner"},
+    hallows2024_frozen = {"Survivor", "Captured"},
+    hallows2024_saint = {"Survivor", "Captured"},
+    BabyZombie = {"Runner"},
+    BruteZombie = {"Runner"},
+    Captured = {"hallows2024_saint", "Saint"},
+    CloakedZombie = {"Runner"},
+    HiddenSlasher = {"Survivor"},
+    Witch = {"Peasant"},
+    Survivor = {"Slasher", "Captured"},
+    DiaguisedTagger = {"Runner"},
+    DyingTagger = {"Runner"},
+    Hotpotato = {"Runner"},
+    Peasant = {"Crown", "SoloCrown"},
+    Peasant = {"Crown", "SoloCrown"},
+    Sick = {"Runner", "Medic"},
+    SprinterZombie = {"Runner"},
+    Toxic = {"Runner"},
+    Arsonist = {"Runner", "OnFire"},
+    BlueTeam = {"YellowTeam", "RedTeam", "OrangeTeam", "GreenTeam", "PurpleTeam"},
+    YellowTeam = {"BlueTeam", "RedTeam", "PurpleTeam", "OrangeTeam"},
+    RedTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "OrangeTeam"},
+    OrangeTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "RedTeam"}
+}
+
+-- UI Elements
+Tab:CreateToggle({
+    Name = "Enable Hitbox",
+    CurrentValue = false,
+    Flag = "EnableHitbox",
+    Callback = function(Value)
+        hitboxEnabled = Value
+        if Value then
+            applyHitboxToAllPlayers()
+        else
+            removeAllHitboxes()
+        end
+    end,
+})
+
+Tab:CreateInput({
+    Name = "Hitbox Size",
+    CurrentValue = tostring(boxSize),
+    PlaceholderText = "Size (e.g. 5)",
+    RemoveTextAfterFocusLost = true,
+    Flag = "HitboxSize",
+    Callback = function(Text)
+        boxSize = tonumber(Text) or 5
+        if hitboxEnabled then
+            applyHitboxToAllPlayers()
+        end
+    end,
+})
+
+Tab:CreateInput({
+    Name = "Transparency",
+    CurrentValue = tostring(boxTransparency),
+    PlaceholderText = "Transparency (0 - 1)",
+    RemoveTextAfterFocusLost = true,
+    Flag = "HitboxTransparency",
+    Callback = function(Text)
+        boxTransparency = math.clamp(tonumber(Text) or 0.7, 0, 1)
+        if hitboxEnabled then
+            applyHitboxToAllPlayers()
+        end
+    end,
+})
+
+-- Role logic
+local function isValidTarget(player)
+    if not player or player == localPlayer then return false end
+
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+
+    local playerRole = player:FindFirstChild("PlayerRole")
+    local localRole = localPlayer:FindFirstChild("PlayerRole")
+    if not playerRole or not localRole then return false end
+
+    local allowedRoles = roleTagRules[localRole.Value]
+    if not allowedRoles then return false end
+
+    return table.find(allowedRoles, playerRole.Value) ~= nil
+end
+
+-- Create/Remove Hitbox
+local function createHitbox(player)
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root or root:FindFirstChild("HitboxPart") then return end
+
+    local part = Instance.new("Part")
+    part.Name = "HitboxPart"
+    part.Anchored = false
+    part.CanCollide = false
+    part.Massless = true
+    part.Transparency = boxTransparency
+    part.Size = Vector3.new(boxSize, boxSize, boxSize)
+    part.Shape = Enum.PartType.Ball
+    part.BrickColor = BrickColor.Red()
+    part.Parent = root
+
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = root
+    weld.Part1 = part
+    weld.Parent = part
+end
+
+local function removeHitbox(player)
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        local part = root:FindFirstChild("HitboxPart")
+        if part then part:Destroy() end
+    end
+end
+
+-- Apply to all
+local function applyHitboxToAllPlayers()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if isValidTarget(p) then
+            createHitbox(p)
+        else
+            removeHitbox(p)
+        end
+    end
+end
+
+local function removeAllHitboxes()
+    for _, p in ipairs(Players:GetPlayers()) do
+        removeHitbox(p)
+    end
+end
+
+-- Player events
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        if hitboxEnabled and isValidTarget(player) then
+            createHitbox(player)
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(removeHitbox)
+
+-- Optional realtime update
+RunService.Heartbeat:Connect(function()
+    if hitboxEnabled then
+        applyHitboxToAllPlayers()
+    end
+end)
+
 -------------------- Esp --------------------
 local Tab = Window:CreateTab("Esp", 4483362458)
 local Section = Tab:CreateSection("Esp (Lag)")
