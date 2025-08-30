@@ -2470,9 +2470,9 @@ local Section = Tab:CreateSection("Profile")
 local Label = Tab:CreateLabel("Youtube:Rof_r", "contact-round", Color3.fromRGB(0, 0, 255), false)
 local Section = Tab:CreateSection("Sosial Media")
 local Paragraph = Tab:CreateParagraph({Title = "Youtube Channel", Content = "youtube.com/@Rof_R"})
-local Paragraph = Tab:CreateParagraph({Title = "Discord Invite Link", Content = "discord.gg/gNyn7Gpn"})
+local Paragraph = Tab:CreateParagraph({Title = "Discord Invite Link", Content = "-"})
 local Paragraph = Tab:CreateParagraph({Title = "Tiktok Profile", Content = "-"})
-local Label = Tab:CreateLabel("Last Update:22/07/2025", "flag", Color3.fromRGB(0, 0, 0), false)
+local Label = Tab:CreateLabel("Last Update:29/08/2025", "flag", Color3.fromRGB(0, 0, 0), false)
 ------------------------------------------------------------
 ------------------------------------------------------------
 --------------------Panic Mode --------------------
