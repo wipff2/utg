@@ -682,8 +682,7 @@ game:GetService("Players").PlayerRemoving:Connect(
     end
 )
 -------------------- Hitbox --------------------
-local Tab = Window:CreateTab("Auto vote", 4483362458)
-local Section = Tab:CreateSection("vote")
+
 ------------------------------------------------------------
 
 
