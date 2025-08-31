@@ -1873,6 +1873,36 @@ RunService.Stepped:Connect(
         end
     end
 )
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Variabel toggle
+local disableContactDamage = false  
+
+-- Toggle UI (contoh pakai Tab:CreateToggle)
+local ToggleContactDamage =
+    Tab:CreateToggle({
+        Name = "Disable lava damage",
+        CurrentValue = false,
+        Flag = "DisableContactDamage",
+        Callback = function(Value)
+            disableContactDamage = Value
+        end
+    })
+
+-- Hook sentuhan agar damage bisa di-block
+player.CharacterAdded:Connect(function(char)
+    local humanoid = char:WaitForChild("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    hrp.Touched:Connect(function(part)
+        if disableContactDamage and part:GetAttribute("ContactDamage") then
+            -- Batalkan damage (set jadi 0)
+            part:SetAttribute("ContactDamage", 0)
+        end
+    end)
+end)
+
 local Section = Tab:CreateSection("Speed")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
