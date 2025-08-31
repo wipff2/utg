@@ -2492,26 +2492,6 @@ local Button =
         end
     }
 )
-local Section = Tab:CreateSection("EdgeIY")
-local Button =
-    Tab:CreateButton(
-    {
-        Name = "Infinite Yield ", -- Nama tombol yang lebih deskriptif
-        Callback = function()
-            -- Jalankan script Infinite Yield
-            local success, err =
-                pcall(
-                function()
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-                end
-            )
-
-            if not success then
-                warn("Failed to load IY:", err)
-            end
-        end
-    }
-)
 local Button =
     Tab:CreateButton(
     {
