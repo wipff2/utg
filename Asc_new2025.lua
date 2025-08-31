@@ -131,6 +131,24 @@ local ToggleTag =
     }
 )
 
+-- Keybind untuk on/off toggle
+local KeybindToggleTag =
+    Tab:CreateKeybind({
+        Name = "MANUAL SILENT TAG(Key)",
+        CurrentKeybind = "t", -- default tombol
+        HoldToInteract = false,
+        Flag = "KeybindToggleTag",
+        Callback = function()
+            -- Balik nilai toggle setiap kali key ditekan
+            tagEnabled = not tagEnabled
+
+            -- Sync dengan UI toggle
+            ToggleTag:Set(tagEnabled)
+
+            
+        end
+    })
+
 local ToggleFilterDead =
     Tab:CreateToggle(
     {
@@ -1102,95 +1120,79 @@ local function createTracer(player)
 end
 
 local function updateTracers()
-    if not tracerConfig.enabled then
-        return
-    end
+    if not tracerConfig.enabled then return end -- kalau ESP mati, keluar
 
     local localChar = localPlayer.Character
-    if not localChar then
-        return
-    end
+    if not localChar then return end
 
     local localHrp = localChar:FindFirstChild("HumanoidRootPart")
-    if not localHrp then
-        return
-    end
+    if not localHrp then return end
 
-    -- First handle cleanup of dead players if ignoreDead is enabled
+    -- Bersihkan player yang mati / role Dead
     if tracerConfig.ignoreDead then
-        for player, tracers in pairs(tracerObjects) do
+        for player, _ in pairs(tracerObjects) do
             if player and player.Parent then
-                local shouldRemove = false
-
-                -- Check if player has Dead role
-                local playerRole = player:FindFirstChild("PlayerRole")
-                if playerRole and playerRole.Value == "Dead" then
-                    shouldRemove = true
-                end
-
-                -- Check if player's character is dead
-                if player.Character then
+                local remove = false
+                local role = player:FindFirstChild("PlayerRole")
+                if role and role.Value == "Dead" then
+                    remove = true
+                elseif player.Character then
                     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
                     if humanoid and (humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead) then
-                        shouldRemove = true
+                        remove = true
                     end
                 end
-
-                if shouldRemove then
+                if remove then
                     cleanUpTracer(player)
                 end
+            else
+                cleanUpTracer(player)
             end
         end
     end
 
-    -- Now update visible tracers
+    -- Update posisi untuk semua player yang sudah ada tracernya
     for player, tracers in pairs(tracerObjects) do
-        if player and player.Parent then
-            local character = player.Character
-            if character then
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    -- Check if we should show this tracer
-                    local shouldShow = true
+        if player and player.Parent and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local shouldShow = true
 
-                    if tracerConfig.ignoreDead then
-                        local humanoid = character:FindFirstChildOfClass("Humanoid")
-                        if humanoid and (humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead) then
-                            shouldShow = false
-                        end
-
-                        local playerRole = player:FindFirstChild("PlayerRole")
-                        if playerRole and playerRole.Value == "Dead" then
-                            shouldShow = false
-                        end
+                -- ignoreDead
+                if tracerConfig.ignoreDead then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    if humanoid and humanoid.Health <= 0 then
+                        shouldShow = false
                     end
-
-                    -- Apply team check if enabled
-                    if shouldShow and tracerConfig.teamCheck then
-                        local playerRole = player:FindFirstChild("PlayerRole")
-                        local localRole = localPlayer:FindFirstChild("PlayerRole")
-
-                        if playerRole and localRole and playerRole.Value == localRole.Value then
-                            shouldShow = false
-                        end
+                    local role = player:FindFirstChild("PlayerRole")
+                    if role and role.Value == "Dead" then
+                        shouldShow = false
                     end
+                end
 
-                    -- Update all tracers for this player
-                    for _, tracer in ipairs(tracers) do
-                        if tracer then
-                            local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-                            if onScreen and shouldShow then
-                                local viewSize = workspace.CurrentCamera.ViewportSize
-                                tracer.From = Vector2.new(viewSize.X / 2, viewSize.Y) -- titik bawah tengah layar
-                                tracer.To = Vector2.new(screenPos.X, screenPos.Y) -- posisi musuh
-                                tracer.Color =
-                                    getRoleColor(player:FindFirstChild("PlayerRole") and player.PlayerRole.Value)
-                                tracer.Thickness = tracerConfig.thickness
-                                tracer.Transparency = tracerConfig.transparency
-                                tracer.Visible = true
-                            else
-                                tracer.Visible = false
-                            end
+                -- teamCheck
+                if shouldShow and tracerConfig.teamCheck then
+                    local role = player:FindFirstChild("PlayerRole")
+                    local localRole = localPlayer:FindFirstChild("PlayerRole")
+                    if role and localRole and role.Value == localRole.Value then
+                        shouldShow = false
+                    end
+                end
+
+                -- Update setiap line tracer
+                for _, tracer in ipairs(tracers) do
+                    if tracer then
+                        local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+                        if onScreen and shouldShow then
+                            local viewSize = workspace.CurrentCamera.ViewportSize
+                            tracer.From = Vector2.new(viewSize.X/2, viewSize.Y) -- titik bawah tengah
+                            tracer.To = Vector2.new(screenPos.X, screenPos.Y)   -- posisi musuh
+                            tracer.Color = getRoleColor(player:FindFirstChild("PlayerRole") and player.PlayerRole.Value)
+                            tracer.Thickness = tracerConfig.thickness
+                            tracer.Transparency = tracerConfig.transparency
+                            tracer.Visible = true
+                        else
+                            tracer.Visible = false
                         end
                     end
                 end
@@ -1200,17 +1202,16 @@ local function updateTracers()
         end
     end
 
-    -- Create tracers for new valid players
-    if tracerConfig.enabled then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= localPlayer and not tracerObjects[player] then
-                if shouldShowTracer(player) then
-                    createTracer(player)
-                end
+    -- Bikin tracer baru untuk player yang valid
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and not tracerObjects[player] then
+            if shouldShowTracer(player) then
+                createTracer(player)
             end
         end
     end
 end
+
 local function startUpdateLoop()
     local heartbeatConnection
     local lastUpdate = 0
@@ -1646,17 +1647,23 @@ Tab:CreateSlider(
     }
 )
 local Section = Tab:CreateSection("Line esp(Lag)")
-local ToggleLine =
-    Tab:CreateToggle(
-    {
-        Name = "Line on/off",
-        CurrentValue = tracerConfig.enabled,
-        Callback = function(Value)
-            tracerConfig.enabled = Value
-            initializeESP() -- Full reinitialization when toggled
+-- Toggle ESP Line
+local ToggleLine = Tab:CreateToggle({
+    Name = "Line ESP",
+    CurrentValue = false,
+    
+    Callback = function(Value)
+        tracerConfig.enabled = Value
+        if Value then
+            forceFullUpdate() -- bikin ulang ESP untuk semua player
+        else
+            -- bersihkan semua tracer kalau dimatikan
+            for player, tracers in pairs(tracerObjects) do
+                cleanUpTracer(player)
+            end
         end
-    }
-)
+    end
+})
 
 Tab:CreateToggle(
     {
