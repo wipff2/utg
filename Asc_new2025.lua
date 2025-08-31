@@ -1653,12 +1653,12 @@ local Section = Tab:CreateSection("Line esp(Lag)")
 -- Toggle ESP Line
 local ToggleLine = Tab:CreateToggle({
     Name = "Line ESP",
-    CurrentValue = false,
-    
+    CurrentValue = tracerConfig.enabled,
+    Flag = "ToggleLineESP",
     Callback = function(Value)
         tracerConfig.enabled = Value
         if Value then
-            forceFullUpdate() -- bikin ulang ESP untuk semua player
+            initializeESP() -- ⬅️ paksa re-inisialisasi biar tracer loop hidup
         else
             -- bersihkan semua tracer kalau dimatikan
             for player, tracers in pairs(tracerObjects) do
