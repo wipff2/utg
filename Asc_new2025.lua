@@ -615,20 +615,6 @@ local SliderPOVCircleThickness =
     }
 )
 local Section = Tab:CreateSection("Color pov")
-local ColorPickerPOVCircle =
-    Tab:CreateColorPicker(
-    {
-        Name = "Border Color",
-        Color = povCircleColor,
-        Flag = "POVCircleColor",
-        Callback = function(Value)
-            povCircleColor = Value
-            if circleBorder then
-                circleBorder.Color = Value
-            end
-        end
-    }
-)
 
 -- Add this to your UI creation section
 local ToggleRainbowColor =
