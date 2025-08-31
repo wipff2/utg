@@ -1560,7 +1560,6 @@ playerRemovingConnection =
     end
 )
 table.insert(connections, playerRemovingConnection)
--- Modified toggle callbacks to use new initialization
 -- ESP Toggle UI
 local ToggleEsp =
     Tab:CreateToggle({
@@ -1572,7 +1571,6 @@ local ToggleEsp =
             initializeESP()
         end
     })
-
 -- Keybind untuk ESP
 local KeybindToggleEsp =
     Tab:CreateKeybind({
