@@ -47,7 +47,7 @@ local tagEventPath =
     ReplicatedStorage.Events.game.tags:FindFirstChild("TagPlayer")
 
 local lastTagTime = {}
-local tagAuraRange = UserInputService.TouchEnabled and 8 or 9
+local tagAuraRange = UserInputService.TouchEnabled and 7 or 8
 local tagEnabled = false
 local filterDead = false
 local teamCheck = false
