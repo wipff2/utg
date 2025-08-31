@@ -747,7 +747,7 @@ local roleColors = {
     Neutral = Color3.fromRGB(128, 128, 128),
     Chiller = Color3.fromRGB(0, 255, 255),
     Frozen = Color3.fromRGB(0, 0, 255),
-    Freezer = Color3.fromRGB(0, 0, 139),
+    Freezer = Color3.fromRGB(0, 0, 0),
     Dead = Color3.fromRGB(255, 255, 255),
     Infected = Color3.fromRGB(0, 255, 0),
     infect = Color3.fromRGB(0, 255, 0),
@@ -1571,7 +1571,6 @@ local ToggleEsp =
             initializeESP()
         end
     })
--- Keybind untuk ESP
 local KeybindToggleEsp =
     Tab:CreateKeybind({
         Name = "TOGGLE ESP (Key)",
@@ -1809,7 +1808,7 @@ Tab:CreateColorPicker(
 local Tab = Window:CreateTab("localPlayer", 4483362458)
 local Section = Tab:CreateSection("localPlayer")
 ------------------------------------------------------------
-local Label = Tab:CreateLabel("Infjump and noclip risk LOL", 4483362458, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
+local Label = Tab:CreateLabel("Infjump and noclip risk LOL", 4483362458, Color3.fromRGB(255, 255, 255), true) -- Title, Icon, Color, IgnoreTheme
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -1845,16 +1844,26 @@ local ToggleInfJump =
     }
 )
 local ToggleNoclip =
-    Tab:CreateToggle(
-    {
+    Tab:CreateToggle({
         Name = "Noclip",
         CurrentValue = false,
         Flag = "Noclip",
         Callback = function(Value)
             noclipEnabled = Value
         end
-    }
-)
+    })
+local KeybindToggleNoclip =
+    Tab:CreateKeybind({
+        Name = "TOGGLE NOCLIP (Key)",
+        CurrentKeybind = "N", -- default tombol N untuk noclip
+        HoldToInteract = false,
+        Flag = "KeybindToggleNoclip",
+        Callback = function()
+            noclipEnabled = not noclipEnabled
+            ToggleNoclip:Set(noclipEnabled) -- update toggle UI agar sinkron
+        end
+    })
+
 RunService.Stepped:Connect(
     function()
         local character = localPlayer.Character
@@ -1911,34 +1920,41 @@ local LocalPlayer = Players.LocalPlayer
 local tpwalking = false
 local walktpSpeed = 1 -- Default speed = 1
 
--- Toggle
 local TPWalkToggle =
-    Tab:CreateToggle(
-    {
+    Tab:CreateToggle({
         Name = "Speed Boost",
         CurrentValue = false,
         Flag = "TPWalkToggle",
         Callback = function(Value)
             tpwalking = Value
             if Value then
-                task.spawn(
-                    function()
-                        local chr = LocalPlayer.Character
-                        local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-                        while tpwalking and chr and hum and hum.Parent do
-                            local delta = RunService.Heartbeat:Wait()
-                            if hum.MoveDirection.Magnitude > 0 then
-                                chr:TranslateBy(hum.MoveDirection * walktpSpeed * delta)
-                            end
-                            chr = LocalPlayer.Character
-                            hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+                task.spawn(function()
+                    local chr = LocalPlayer.Character
+                    local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+                    while tpwalking and chr and hum and hum.Parent do
+                        local delta = RunService.Heartbeat:Wait()
+                        if hum.MoveDirection.Magnitude > 0 then
+                            chr:TranslateBy(hum.MoveDirection * walktpSpeed * delta)
                         end
+                        chr = LocalPlayer.Character
+                        hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
                     end
-                )
+                end)
             end
         end
-    }
-)
+    })
+
+local KeybindTPWalk =
+    Tab:CreateKeybind({
+        Name = "TOGGLE SPEED BOOST (Key)",
+        CurrentKeybind = "H", -- default tombol Z untuk aktif/nonaktif speed boost
+        HoldToInteract = false,
+        Flag = "KeybindTPWalk",
+        Callback = function()
+            tpwalking = not tpwalking
+            TPWalkToggle:Set(tpwalking) -- sinkron dengan toggle UI
+        end
+    })
 
 -- Slider
 Tab:CreateSlider(
@@ -2045,61 +2061,88 @@ Tab:CreateToggle(
 local Tab = Window:CreateTab("Tool", 4483362458)
 ------------------------------------------------------------
 local Section = Tab:CreateSection("Gun")
-local Paragraph =
-    Tab:CreateParagraph({Title = "info", Content = "this feature for horde gamemode Paintball gun (unstable)."})
+local Paragraph = Tab:CreateParagraph({
+    Title = "Info",
+    Content = "Silent aim gun untuk Horde gamemode (PaintballGun). Lebih stabil & legit."
+})
+
 local player = game:GetService("Players").LocalPlayer
 local runService = game:GetService("RunService")
+
 local toggle = false
+local lastShot = 0
+local shootDelay = 0.5 -- delay 0.5 detik biar aman
+
+-- Cari infected terdekat
 local function getNearestInfected()
     local character = player.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then
         return nil
     end
-    local nearestPlayer = nil
-    local shortestDistance = math.huge
+
+    local nearestPlayer, shortestDistance = nil, math.huge
     local myPosition = character.HumanoidRootPart.Position
+
     for _, target in pairs(game:GetService("Players"):GetPlayers()) do
         if target ~= player and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            local targetRole = target:FindFirstChild("PlayerRole")
-            if targetRole and targetRole.Value == "Infected" then
+            local role = target:FindFirstChild("PlayerRole")
+            local humanoid = target.Character:FindFirstChild("Humanoid")
+            if role and role.Value == "Infected" and humanoid and humanoid.Health > 0 then
                 local distance = (target.Character.HumanoidRootPart.Position - myPosition).Magnitude
                 if distance < shortestDistance then
-                    shortestDistance = distance
-                    nearestPlayer = target
+                    shortestDistance, nearestPlayer = distance, target
                 end
             end
         end
     end
     return nearestPlayer
 end
+
+-- Silent aim auto shoot
 local function autoShoot()
     while toggle do
-        local tool = player.Character and player.Character:FindFirstChild("PaintballGun")
-        if tool and tool:FindFirstChild("DoGun") then
-            local nearest = getNearestInfected()
-            if nearest and nearest.Character and nearest.Character:FindFirstChild("HumanoidRootPart") then
-                local args = {tool, nearest.Character.HumanoidRootPart.Position}
-                tool.DoGun:InvokeServer(unpack(args))
+        local now = tick()
+        if now - lastShot >= shootDelay then
+            local tool = player.Character and player.Character:FindFirstChild("PaintballGun")
+            if tool and tool:FindFirstChild("DoGun") then
+                local target = getNearestInfected()
+                if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = target.Character.HumanoidRootPart
+                    local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
+
+                    if myHRP then
+                        -- Hitpoint random di sekitar tubuh biar lebih legit
+                        local offset = Vector3.new(
+                            math.random(-1, 1),
+                            math.random(0, 2),
+                            math.random(-1, 1)
+                        )
+                        local aimPos = hrp.Position + offset
+
+                        -- InvokeServer fire
+                        tool.DoGun:InvokeServer(tool, aimPos)
+
+                        lastShot = now
+                    end
+                end
             end
         end
-        task.wait(0.4) -- Delay agar tidak spam terlalu cepat
+        runService.Heartbeat:Wait()
     end
 end
-local Toggle =
-    Tab:CreateToggle(
-    {
-        Name = "silent aim gun",
-        CurrentValue = false,
-        Flag = "AutoShootToggle",
-        Callback = function(Value)
-            toggle = Value
-            if toggle then
-                task.spawn(autoShoot) -- Gunakan task.spawn agar tidak freeze UI
-            end
-        end
-    }
-)
 
+-- Toggle UI
+local Toggle = Tab:CreateToggle({
+    Name = "Silent Aim Gun",
+    CurrentValue = false,
+    Flag = "AutoShootToggle",
+    Callback = function(Value)
+        toggle = Value
+        if toggle then
+            task.spawn(autoShoot)
+        end
+    end
+})
 -------------------- Misc --------------------
 local Tab = Window:CreateTab("Misc", 4483362458)
 ------------------------------------------------------------
@@ -2147,7 +2190,7 @@ localPlayer.PlayerGui.ChildAdded:Connect(function(child)
     end
 end)
 
--- 🔘 Toggle UI
+--  Toggle UI
 local ToggleVoting = Tab:CreateToggle({
     Name = "Block Voting",
     CurrentValue = false,
