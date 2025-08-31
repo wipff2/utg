@@ -118,7 +118,6 @@ local Paragraph =
     {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate"}
 )
 local Paragraph = Tab:CreateParagraph({Title = "warning", Content = "Please use it at your own discretion."})
-local Paragraph = Tab:CreateParagraph({Title = "warning2", Content = "use good executor like delta."})
 local ToggleTag =
     Tab:CreateToggle(
     {
@@ -130,25 +129,18 @@ local ToggleTag =
         end
     }
 )
-
--- Keybind untuk on/off toggle
 local KeybindToggleTag =
     Tab:CreateKeybind({
         Name = "MANUAL SILENT TAG(Key)",
-        CurrentKeybind = "t", -- default tombol
+        CurrentKeybind = "T", -- default tombol
         HoldToInteract = false,
         Flag = "KeybindToggleTag",
         Callback = function()
-            -- Balik nilai toggle setiap kali key ditekan
             tagEnabled = not tagEnabled
-
-            -- Sync dengan UI toggle
             ToggleTag:Set(tagEnabled)
-
-            
         end
-    })
-
+    }
+)
 local ToggleFilterDead =
     Tab:CreateToggle(
     {
@@ -1569,17 +1561,31 @@ playerRemovingConnection =
 )
 table.insert(connections, playerRemovingConnection)
 -- Modified toggle callbacks to use new initialization
+-- ESP Toggle UI
 local ToggleEsp =
-    Tab:CreateToggle(
-    {
+    Tab:CreateToggle({
         Name = "ESP Toggle",
         CurrentValue = espConfig.enabled,
+        Flag = "ToggleEsp",
         Callback = function(Value)
             espConfig.enabled = Value
             initializeESP()
         end
-    }
-)
+    })
+
+-- Keybind untuk ESP
+local KeybindToggleEsp =
+    Tab:CreateKeybind({
+        Name = "TOGGLE ESP (Key)",
+        CurrentKeybind = "Y", -- default tombol ESP
+        HoldToInteract = false,
+        Flag = "KeybindToggleEsp",
+        Callback = function()
+            espConfig.enabled = not espConfig.enabled
+            ToggleEsp:Set(espConfig.enabled) -- update toggle UI agar sinkron
+            initializeESP()
+        end
+    })
 Tab:CreateToggle(
     {
         Name = "Show Role",
@@ -1762,7 +1768,6 @@ Tab:CreateToggle(
         end
     }
 )
-
 Tab:CreateToggle(
     {
         Name = "raimbow Mode",
@@ -2080,6 +2085,53 @@ local Button =
         end
     }
 )
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local localPlayer = Players.LocalPlayer
+local votingValue = ReplicatedStorage:WaitForChild("Values"):WaitForChild("Voting")
+
+-- Variabel global toggle
+local blockVoting = false
+
+-- Fungsi utama: blokir voting (selalu false + hide UI)
+local function handleVoting()
+    if not blockVoting then return end
+
+    -- Force value jadi false
+    if votingValue.Value == true then
+        votingValue.Value = false
+    end
+
+    -- Sembunyikan UI kalau ada
+    local gui = localPlayer.PlayerGui:FindFirstChild("VotingGui") -- ganti "VotingGui" sesuai nama aslinya
+    if gui then
+        gui.Enabled = false
+    end
+end
+
+-- Dengarkan perubahan Voting
+votingValue.Changed:Connect(handleVoting)
+
+-- Dengarkan ketika UI Voting muncul di PlayerGui
+localPlayer.PlayerGui.ChildAdded:Connect(function(child)
+    if blockVoting and child.Name == "VotingGui" then
+        child.Enabled = false
+    end
+end)
+
+-- 🔘 Toggle UI
+local ToggleVoting = Tab:CreateToggle({
+    Name = "Block Voting",
+    CurrentValue = false,
+    Flag = "ToggleVoting",
+    Callback = function(Value)
+        blockVoting = Value
+        if blockVoting then
+            handleVoting()
+        end
+    end,
+})
+
 local Section = Tab:CreateSection("Code")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RedeemEvent = ReplicatedStorage.Events.game.ui.RedeemCode
