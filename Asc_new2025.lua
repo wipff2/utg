@@ -87,7 +87,7 @@ local roleTagRules = {
     Knight = {"Runner", "Peasent", "Peasant"},
     Medic = {"Sick", "Peasent", "Infect", "Infected"},
     Headless = {"Neutral", "Witch"},
-    Peasent = {"Knight", "Crown", "SoloCrown", "Headless"},
+    Peasent = {"Knight", "Crown", "SoloCrown", "Headless", "Witches", "Witch"},
     Alone = {"Alone", "Neutral", "Runner"},
     hallows2024_frozen = {"Survivor", "Captured"},
     hallows2024_saint = {"Survivor", "Captured"},
@@ -97,7 +97,7 @@ local roleTagRules = {
     CloakedZombie = {"Runner"},
     HiddenSlasher = {"Survivor"},
     Witch = {"Peasant"},
-    Survivor = {"Slasher", "Captured", "Witch"},
+    Survivor = {"Slasher", "Captured", "Witches", "Witch"},
     DiaguisedTagger = {"Runner"},
     DyingTagger = {"Runner"},
     Hotpotato = {"Runner"},
@@ -108,22 +108,17 @@ local roleTagRules = {
     Toxic = {"Runner"},
     Arsonist = {"Runner", "OnFire", "Neutral"},
     BlueTeam = {"YellowTeam", "RedTeam", "OrangeTeam", "GreenTeam", "PurpleTeam", "Neutral"},
-    YellowTeam = {"BlueTeam", "RedTeam", "PurpleTeam", "OrangeTeam", "Neutral"},
-    RedTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "OrangeTeam", "Neutral"},
-    OrangeTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "RedTeam", "Neutral"}
+    YellowTeam = {"BlueTeam", "RedTeam", "PurpleTeam", "OrangeTeam", "GreenTeam", "Neutral"},
+    RedTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "OrangeTeam", "GreenTeam", "Neutral"},
+    OrangeTeam = {"BlueTeam", "YellowTeam", "PurpleTeam", "RedTeam", "GreenTeam", "Neutral"},
+    GreenTeam = {"OrangeTeam", "RedTeam", "YellowTeam", "BlueTeam", "PurpleTeam", "Neutral"}
 }
 local Paragraph =
     Tab:CreateParagraph(
     {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate"}
 )
-local Paragraph =
-    Tab:CreateParagraph(
-    {Title = "warning", Content = "Please use it at your own discretion."}
-)
-local Paragraph =
-    Tab:CreateParagraph(
-    {Title = "warning2", Content = "use good executor like delta."}
-)
+local Paragraph = Tab:CreateParagraph({Title = "warning", Content = "Please use it at your own discretion."})
+local Paragraph = Tab:CreateParagraph({Title = "warning2", Content = "use good executor like delta."})
 local ToggleTag =
     Tab:CreateToggle(
     {
@@ -439,7 +434,7 @@ local function getLowestHealthTarget()
 
             if humanoid and targetHRP and localHRP then
                 local distance = (localHRP.Position - targetHRP.Position).Magnitude
-                
+
                 if distance <= tagAuraRange and humanoid.Health < lowestHealth then
                     lowestHealth = humanoid.Health
                     targetPlayer = player
@@ -460,7 +455,6 @@ local function tagPlayer(player)
     end
 
     if povCircleEnabled and not isPlayerInCenter(player) then
-        
         return
     end
 
@@ -488,7 +482,6 @@ local function tagPlayer(player)
 
     local distance = (localHRP.Position - targetHRP.Position).Magnitude
     if distance > tagAuraRange then
-        
         return
     end
 
@@ -497,19 +490,24 @@ local function tagPlayer(player)
         [2] = targetHRP.Position
     }
 
-    local success, response = pcall(function()
-        return tagEventPath:InvokeServer(unpack(args))
-    end)
+    local success, response =
+        pcall(
+        function()
+            return tagEventPath:InvokeServer(unpack(args))
+        end
+    )
 
     if success then
         lastTagTime[player] = currentTime
 
         if legitTag then
-            local animFolder = ReplicatedStorage:FindFirstChild("Animations") and ReplicatedStorage.Animations:FindFirstChild("Base")
+            local animFolder =
+                ReplicatedStorage:FindFirstChild("Animations") and ReplicatedStorage.Animations:FindFirstChild("Base")
             if animFolder then
                 local tagAnim = animFolder:FindFirstChild("Tag1") or animFolder:FindFirstChild("Tag2")
                 if tagAnim then
-                    local animator = localCharacter:FindFirstChild("Humanoid") and localCharacter.Humanoid:FindFirstChild("Animator")
+                    local animator =
+                        localCharacter:FindFirstChild("Humanoid") and localCharacter.Humanoid:FindFirstChild("Animator")
                     if animator then
                         local animation = animator:LoadAnimation(tagAnim)
                         local isPlaying = false
@@ -532,18 +530,19 @@ local function tagPlayer(player)
 end
 local RunService = game:GetService("RunService")
 
-RunService.Heartbeat:Connect(function()
-    local now = tick()
-    if tagEnabled and now - lastGlobalTagTime > 0.9 and not shouldStopTagging() then
-        local target = getLowestHealthTarget()
-        if target then
-            tagPlayer(target)
-            lastGlobalTagTime = now
+RunService.Heartbeat:Connect(
+    function()
+        local now = tick()
+        if tagEnabled and now - lastGlobalTagTime > 0.9 and not shouldStopTagging() then
+            local target = getLowestHealthTarget()
+            if target then
+                tagPlayer(target)
+                lastGlobalTagTime = now
+            end
         end
+        updatePOVCircle()
     end
-    updatePOVCircle()
-end)
-
+)
 
 local Section = Tab:CreateSection("Pov")
 -- UI Elements
@@ -684,7 +683,6 @@ game:GetService("Players").PlayerRemoving:Connect(
 -------------------- Hitbox --------------------
 
 ------------------------------------------------------------
-
 
 -------------------- Esp --------------------
 local Tab = Window:CreateTab("Esp", 4483362458)
@@ -1180,24 +1178,16 @@ local function updateTracers()
                     -- Update all tracers for this player
                     for _, tracer in ipairs(tracers) do
                         if tracer then
-                            if shouldShow then
-                                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-                                local localScreenPos = workspace.CurrentCamera:WorldToViewportPoint(localHrp.Position)
-
-                                if onScreen then
-                                    tracer.From = Vector2.new(localScreenPos.X, localScreenPos.Y)
-                                    tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-                                    tracer.Visible = true
-
-                                    -- Update appearance
-                                    local playerRole = player:FindFirstChild("PlayerRole")
-                                    local roleValue = playerRole and playerRole.Value or nil
-                                    tracer.Color = getRoleColor(roleValue)
-                                    tracer.Thickness = tracerConfig.thickness
-                                    tracer.Transparency = tracerConfig.transparency
-                                else
-                                    tracer.Visible = false
-                                end
+                            local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+                            if onScreen and shouldShow then
+                                local viewSize = workspace.CurrentCamera.ViewportSize
+                                tracer.From = Vector2.new(viewSize.X / 2, viewSize.Y) -- titik bawah tengah layar
+                                tracer.To = Vector2.new(screenPos.X, screenPos.Y) -- posisi musuh
+                                tracer.Color =
+                                    getRoleColor(player:FindFirstChild("PlayerRole") and player.PlayerRole.Value)
+                                tracer.Thickness = tracerConfig.thickness
+                                tracer.Transparency = tracerConfig.transparency
+                                tracer.Visible = true
                             else
                                 tracer.Visible = false
                             end
@@ -1809,6 +1799,7 @@ Tab:CreateColorPicker(
 local Tab = Window:CreateTab("localPlayer", 4483362458)
 local Section = Tab:CreateSection("localPlayer")
 ------------------------------------------------------------
+local Label = Tab:CreateLabel("Infjump and noclip risk LOL", 4483362458, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -1882,7 +1873,7 @@ local walktpSpeed = 1 -- Default speed = 1
 
 -- Toggle
 local TPWalkToggle =
-Tab:CreateToggle(
+    Tab:CreateToggle(
     {
         Name = "Speed Boost",
         CurrentValue = false,
@@ -2015,9 +2006,7 @@ local Tab = Window:CreateTab("Tool", 4483362458)
 ------------------------------------------------------------
 local Section = Tab:CreateSection("Gun")
 local Paragraph =
-    Tab:CreateParagraph(
-    {Title = "info", Content = "this feature for horde gamemode Paintball gun (unstable)."}
-)
+    Tab:CreateParagraph({Title = "info", Content = "this feature for horde gamemode Paintball gun (unstable)."})
 local player = game:GetService("Players").LocalPlayer
 local runService = game:GetService("RunService")
 local toggle = false
@@ -2460,8 +2449,6 @@ local Button =
             if espConfig.enabled or tracerConfig.enabled then
                 initializeESP()
             end
-
-            
         end
     }
 )
