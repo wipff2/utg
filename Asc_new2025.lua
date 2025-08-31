@@ -746,7 +746,7 @@ local roleColors = {
     SoloCrown = Color3.fromRGB(255, 215, 0),
     Neutral = Color3.fromRGB(128, 128, 128),
     Chiller = Color3.fromRGB(0, 255, 255),
-    Frozen = Color3.fromRGB(0, 0, 255),
+    Frozen = Color3.fromRGB(173, 216, 230),
     Freezer = Color3.fromRGB(0, 0, 0),
     Dead = Color3.fromRGB(255, 255, 255),
     Infected = Color3.fromRGB(0, 255, 0),
@@ -767,6 +767,7 @@ local roleColors = {
     Alone = Color3.fromRGB(255, 0, 0),
     FFATagger = Color3.fromRGB(255, 0, 0),
     RunnerTagger = Color3.fromRGB(255, 0, 0)
+    InfectedRunner = Color3.fromRGB(255, 0, 0)
 }
 
 -- ESP Objects
@@ -1918,7 +1919,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local tpwalking = false
-local walktpSpeed = 1 -- Default speed = 1
+local walktpSpeed = 4
 
 local TPWalkToggle =
     Tab:CreateToggle({
@@ -1960,7 +1961,7 @@ local KeybindTPWalk =
 Tab:CreateSlider(
     {
         Name = "Speed Boost amount",
-        Range = {1, 100},
+        Range = {1, 40},
         Increment = 1,
         Suffix = "Speed",
         CurrentValue = 1, -- Default 1
@@ -2063,7 +2064,7 @@ local Tab = Window:CreateTab("Tool", 4483362458)
 local Section = Tab:CreateSection("Gun")
 local Paragraph = Tab:CreateParagraph({
     Title = "Info",
-    Content = "Silent aim gun untuk Horde gamemode (PaintballGun). Lebih stabil & legit."
+    Content = "Silent aim gun for Horde gamemode (PaintballGun)."
 })
 
 local player = game:GetService("Players").LocalPlayer
