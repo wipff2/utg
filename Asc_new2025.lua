@@ -115,7 +115,7 @@ local roleTagRules = {
 }
 local Paragraph =
     Tab:CreateParagraph(
-    {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate"}
+    {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate ,4.you get REPORT"}
 )
 local Paragraph = Tab:CreateParagraph({Title = "warning", Content = "Please use it at your own discretion."})
 local ToggleTag =
