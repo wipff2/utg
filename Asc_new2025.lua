@@ -1829,7 +1829,7 @@ Tab:CreateColorPicker(
 local Tab = Window:CreateTab("localPlayer", 4483362458)
 local Section = Tab:CreateSection("localPlayer")
 ------------------------------------------------------------
-local Label = Tab:CreateLabel("Infjump and noclip risk LOL", 4483362458, Color3.fromRGB(255, 255, 255), true) -- Title, Icon, Color, IgnoreTheme
+local Label = Tab:CreateLabel("--Infjump, noclip and speed boost risk LOL--", 4483362458, Color3.fromRGB(255, 255, 255), true) -- Title, Icon, Color, IgnoreTheme
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
