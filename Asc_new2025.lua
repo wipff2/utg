@@ -1745,11 +1745,10 @@ Tab:CreateToggle(
         end
     }
 )
-
 Tab:CreateSlider(
     {
         Name = "Line Thickness",
-        Range = {0.1, 5},
+        Range = {1, 5},
         Increment = 0.1,
         Suffix = "px",
         CurrentValue = tracerConfig.thickness,
