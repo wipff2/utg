@@ -1473,28 +1473,22 @@ if localRole then
         )
     )
 end
-
--- Removed complex queue system
 table.insert(
     connections,
     RunService.RenderStepped:Connect(
         function()
-            updateTracers() -- Just update tracers each frame
+            updateTracers()
         end
     )
 )
 
 local function fullCleanup()
-    -- Stop the update loop
     if stopUpdateLoop then
         stopUpdateLoop()
         stopUpdateLoop = nil
     end
-
-    -- Clear all ESP objects
     for player, espData in pairs(espObjects) do
         if espData then
-            -- Clean up GUI
             if espData.gui then
                 pcall(
                     function()
@@ -1502,8 +1496,6 @@ local function fullCleanup()
                     end
                 )
             end
-
-            -- Disconnect all events
             if espData.connections then
                 for _, conn in pairs(espData.connections) do
                     pcall(
@@ -1516,8 +1508,6 @@ local function fullCleanup()
         end
     end
     espObjects = {}
-
-    -- Clear all trackers/lines
     for player, tracers in pairs(tracerObjects) do
         if tracers then
             for _, tracer in ipairs(tracers) do
@@ -1533,8 +1523,6 @@ local function fullCleanup()
         end
     end
     tracerObjects = {}
-
-    -- Clear the ESP folder
     if espFolder then
         pcall(
             function()
@@ -1550,7 +1538,6 @@ teleportConnection =
     localPlayer.OnTeleport:Connect(
     function(state)
         if state == Enum.TeleportState.Started then
-            -- Disconnect all other connections first
             for _, conn in ipairs(connections) do
                 pcall(
                     function()
@@ -1558,18 +1545,13 @@ teleportConnection =
                     end
                 )
             end
-
-            -- Perform full cleanup
             fullCleanup()
-
-            -- Disconnect this connection last
             teleportConnection:Disconnect()
         end
     end
 )
 table.insert(connections, teleportConnection)
 
--- Player leaving handler (for normal disconnects)
 local playerRemovingConnection
 playerRemovingConnection =
     Players.PlayerRemoving:Connect(
