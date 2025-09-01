@@ -750,7 +750,7 @@ local roleColors = {
     Survivor = Color3.fromRGB(255, 255, 0),
     Alone = Color3.fromRGB(255, 0, 0),
     FFATagger = Color3.fromRGB(255, 0, 0),
-    RunnerTagger = Color3.fromRGB(255, 0, 0)
+    RunnerTagger = Color3.fromRGB(255, 0, 0),
     InfectedRunner = Color3.fromRGB(255, 0, 0)
 }
 
