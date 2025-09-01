@@ -1894,7 +1894,7 @@ RunService.Stepped:Connect(
                     if noclipEnabled then
                         part.CanCollide = false
                     else
-                        if part.Name == "Head" or part.Name == "Torso" then
+                        if part.Name == "Torso" then
                             part.CanCollide = true
                         end
                     end
