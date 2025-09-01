@@ -615,8 +615,6 @@ local SliderPOVCircleThickness =
     }
 )
 local Section = Tab:CreateSection("Color pov")
-
--- Add this to your UI creation section
 local ToggleRainbowColor =
     Tab:CreateToggle(
     {
