@@ -2177,53 +2177,6 @@ local Button =
         end
     }
 )
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local localPlayer = Players.LocalPlayer
-local votingValue = ReplicatedStorage:WaitForChild("Values"):WaitForChild("Voting")
-
--- Variabel global toggle
-local blockVoting = false
-
--- Fungsi utama: blokir voting (selalu false + hide UI)
-local function handleVoting()
-    if not blockVoting then return end
-
-    -- Force value jadi false
-    if votingValue.Value == true then
-        votingValue.Value = false
-    end
-
-    -- Sembunyikan UI kalau ada
-    local gui = localPlayer.PlayerGui:FindFirstChild("VotingGui") -- ganti "VotingGui" sesuai nama aslinya
-    if gui then
-        gui.Enabled = false
-    end
-end
-
--- Dengarkan perubahan Voting
-votingValue.Changed:Connect(handleVoting)
-
--- Dengarkan ketika UI Voting muncul di PlayerGui
-localPlayer.PlayerGui.ChildAdded:Connect(function(child)
-    if blockVoting and child.Name == "VotingGui" then
-        child.Enabled = false
-    end
-end)
-
---  Toggle UI
-local ToggleVoting = Tab:CreateToggle({
-    Name = "Block Voting",
-    CurrentValue = false,
-    Flag = "ToggleVoting",
-    Callback = function(Value)
-        blockVoting = Value
-        if blockVoting then
-            handleVoting()
-        end
-    end,
-})
-
 local Section = Tab:CreateSection("Code")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RedeemEvent = ReplicatedStorage.Events.game.ui.RedeemCode
