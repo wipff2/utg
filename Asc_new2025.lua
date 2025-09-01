@@ -538,21 +538,57 @@ local function tagPlayer(player)
         warn("[ERROR] Failed to tag:", player.Name, "Error:", response)
     end
 end
-local RunService = game:GetService("RunService")
 
-RunService.Heartbeat:Connect(
-    function()
-        local now = tick()
-        if tagEnabled and now - lastGlobalTagTime > 0.9 and not shouldStopTagging() then
-            local target = getLowestHealthTarget()
-            if target then
-                tagPlayer(target)
-                lastGlobalTagTime = now
+local function getNearestPlayer()
+    local nearestPlayer = nil
+    local shortestDistance = math.huge
+
+    local localCharacter = localPlayer.Character
+    local localHRP = localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localHRP then return nil end
+
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local targetHRP = player.Character:FindFirstChild("HumanoidRootPart")
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+
+            if targetHRP and humanoid and humanoid.Health > 0 then
+                local distance = (localHRP.Position - targetHRP.Position).Magnitude
+                if distance < shortestDistance and distance <= tagAuraRange then
+                    shortestDistance = distance
+                    nearestPlayer = player
+                end
             end
         end
-        updatePOVCircle()
     end
-)
+
+    return nearestPlayer
+end
+
+local RunService = game:GetService("RunService")
+
+RunService.Heartbeat:Connect(function()
+    local now = tick()
+    if tagEnabled and now - lastGlobalTagTime > 0.5 and not shouldStopTagging() then
+        local target
+
+        -- Jika filter aktif, cari target HP terendah
+        if roleFilterEnabled or filterDead or teamCheck then
+            target = getLowestHealthTarget()
+        else
+            -- Jika tidak ada filter, ambil target terdekat
+            target = getNearestPlayer()
+        end
+
+        if target then
+            tagPlayer(target)
+            lastGlobalTagTime = now
+        end
+    end
+
+    updatePOVCircle()
+end)
+
 
 local Section = Tab:CreateSection("Pov")
 -- UI Elements
