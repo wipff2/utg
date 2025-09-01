@@ -2394,11 +2394,14 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local WebhookURL =
-    "https://discord.com/api/webhooks/1251060163398467625/zLMibUZzFIdx_ZsAr-dBT1DFbp3K4w1Q0qFvrunDzlsiuEzbE-tlmqoync5eh_Qhjl9h"
+
+-- === CONFIG ===
+local WebhookURL = "https://discord.com/api/webhooks/1251060163398467625/zLMibUZzFIdx_ZsAr-dBT1DFbp3K4w1Q0qFvrunDzlsiuEzbE-tlmqoync5eh_Qhjl9h"
 local cooldownTime = 20
 local cooldownFilePath = "cld/cld_path"
 local lastSendTime = 0
+
+-- === COOLDOWN FILE ===
 local function readCooldown()
     if isfile and isfile(cooldownFilePath) then
         local contents = readfile(cooldownFilePath)
@@ -2409,12 +2412,16 @@ local function readCooldown()
     end
     return 0
 end
+
 local function saveCooldown(timeRemaining)
     if writefile then
         writefile(cooldownFilePath, tostring(timeRemaining))
     end
 end
+
 lastSendTime = tick() - (cooldownTime - readCooldown())
+
+-- === GET EXECUTOR ===
 local function GetExecutorName()
     if identifyexecutor then
         return identifyexecutor()
@@ -2426,17 +2433,21 @@ local function GetExecutorName()
         return "Unknown Executor"
     end
 end
+
+-- === SEND TO WEBHOOK ===
 local function SendToWebhook(text)
     if tick() - lastSendTime < cooldownTime then
         local timeLeft = math.ceil(cooldownTime - (tick() - lastSendTime))
-        Rayfield:Notify(
-            {
+        if Rayfield and Rayfield.Notify then
+            Rayfield:Notify({
                 Title = "Cooldown Active",
                 Content = "Please wait " .. timeLeft .. "s before sending again.",
                 Duration = 2,
                 Image = 4483362458
-            }
-        )
+            })
+        else
+            print("Cooldown active: wait " .. timeLeft .. "s")
+        end
         return
     end
 
@@ -2462,70 +2473,70 @@ local function SendToWebhook(text)
             }
         }
     }
+
     local jsonData = HttpService:JSONEncode(data)
     local headers = {["Content-Type"] = "application/json"}
-    local requestFunction = request or syn and syn.request or http and http.request
+
+    local requestFunction = (syn and syn.request) or request or (http and http.request)
+
     if requestFunction then
-        Rayfield:Notify(
-            {
+        if Rayfield and Rayfield.Notify then
+            Rayfield:Notify({
                 Title = "Success",
                 Content = "Text sent to Discord webhook!",
                 Duration = 2,
                 Image = 4483362458
-            }
-        )
+            })
+        else
+            print("✅ Text sent to Discord webhook!")
+        end
 
-        requestFunction(
-            {
-                Url = WebhookURL,
-                Method = "POST",
-                Headers = headers,
-                Body = jsonData
-            }
-        )
-    else
-        warn("GO GET BETTER EXECUTOR DUDE")
+        requestFunction({
+            Url = WebhookURL,
+            Method = "POST",
+            Headers = headers,
+            Body = jsonData
+        })
     end
 end
+
+-- === AUTO SAVE COOLDOWN ===
 if writefile then
-    task.spawn(
-        function()
-            while true do
-                task.wait(1)
-                local timeLeft = math.max(0, cooldownTime - (tick() - lastSendTime))
-                saveCooldown(math.ceil(timeLeft))
-            end
+    task.spawn(function()
+        while true do
+            task.wait(1)
+            local timeLeft = math.max(0, cooldownTime - (tick() - lastSendTime))
+            saveCooldown(math.ceil(timeLeft))
         end
-    )
+    end)
 end
-local Label =
-    Tab:CreateLabel(
-    "Sending will include max 999 characters. Cooldown: 10 seconds.",
-    "hourglass",
-    Color3.fromRGB(0, 0, 0),
-    false
-)
-local Input =
-    Tab:CreateInput(
-    {
+
+-- === UI ELEMENTS (optional) ===
+if Tab then
+    local Label = Tab:CreateLabel(
+        "Sending will include max 999 characters. Cooldown: " .. tostring(cooldownTime) .. " seconds.",
+        "hourglass",
+        Color3.fromRGB(0, 0, 0),
+        false
+    )
+
+    local Input = Tab:CreateInput({
         Name = "Enter Text",
         CurrentValue = "",
         PlaceholderText = "Type something...",
         RemoveTextAfterFocusLost = false,
         Flag = "Input11",
-        Callback = function(Text)
-        end
-    }
-)
-local Button =
-    Tab:CreateButton(
-    {
+        Callback = function(Text) end
+    })
+
+    Tab:CreateButton({
         Name = "Send",
         Callback = function()
             SendToWebhook(Input.CurrentValue)
         end
-    }
-)
+    })
+end
+
 local Button =
     Tab:CreateButton(
     {
