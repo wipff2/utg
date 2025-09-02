@@ -593,8 +593,6 @@ RunService.Heartbeat:Connect(function()
 
     updatePOVCircle()
 end)
-
-
 local Section = Tab:CreateSection("Pov")
 -- UI Elements
 local TogglePOVCircleEnabled =
@@ -1851,26 +1849,37 @@ local ToggleInfJump =
         end
     }
 )
-local ToggleNoclip =
-    Tab:CreateToggle({
-        Name = "Noclip",
-        CurrentValue = false,
-        Flag = "Noclip",
-        Callback = function(Value)
-            noclipEnabled = Value
-        end
-    })
-local KeybindToggleNoclip =
-    Tab:CreateKeybind({
-        Name = "TOGGLE NOCLIP (Key)",
-        CurrentKeybind = "N", -- default tombol N untuk noclip
-        HoldToInteract = false,
-        Flag = "KeybindToggleNoclip",
-        Callback = function()
-            noclipEnabled = not noclipEnabled
-            ToggleNoclip:Set(noclipEnabled) -- update toggle UI agar sinkron
-        end
-    })
+-- Handler utama untuk noclip
+local function setNoclipState(state)
+    noclipEnabled = state
+    
+    -- update toggle UI dengan aman
+    pcall(function()
+        ToggleNoclip:Set(state)
+    end)
+end
+
+-- Toggle UI
+local ToggleNoclip = Tab:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Flag = "Noclip",
+    Callback = function(Value)
+        setNoclipState(Value)
+    end
+})
+
+-- Keybind untuk noclip
+local KeybindToggleNoclip = Tab:CreateKeybind({
+    Name = "TOGGLE NOCLIP (Key)",
+    CurrentKeybind = "N",
+    HoldToInteract = false,
+    Flag = "KeybindToggleNoclip",
+    Callback = function()
+        setNoclipState(not noclipEnabled)
+    end
+})
+
 
 RunService.Stepped:Connect(
     function()
@@ -1928,41 +1937,52 @@ local LocalPlayer = Players.LocalPlayer
 local tpwalking = false
 local walktpSpeed = 4
 
-local TPWalkToggle =
-    Tab:CreateToggle({
-        Name = "Speed Boost",
-        CurrentValue = false,
-        Flag = "TPWalkToggle",
-        Callback = function(Value)
-            tpwalking = Value
-            if Value then
-                task.spawn(function()
-                    local chr = LocalPlayer.Character
-                    local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-                    while tpwalking and chr and hum and hum.Parent do
-                        local delta = RunService.Heartbeat:Wait()
-                        if hum.MoveDirection.Magnitude > 0 then
-                            chr:TranslateBy(hum.MoveDirection * walktpSpeed * delta)
-                        end
-                        chr = LocalPlayer.Character
-                        hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-                    end
-                end)
-            end
-        end
-    })
+-- Handler utama untuk TPWalk
+local function setTPWalkState(state)
+    tpwalking = state
+    
+    -- update toggle UI dengan aman
+    pcall(function()
+        TPWalkToggle:Set(state)
+    end)
 
-local KeybindTPWalk =
-    Tab:CreateKeybind({
-        Name = "TOGGLE SPEED BOOST (Key)",
-        CurrentKeybind = "H", -- default tombol Z untuk aktif/nonaktif speed boost
-        HoldToInteract = false,
-        Flag = "KeybindTPWalk",
-        Callback = function()
-            tpwalking = not tpwalking
-            TPWalkToggle:Set(tpwalking) -- sinkron dengan toggle UI
-        end
-    })
+    if state then
+        task.spawn(function()
+            local chr = LocalPlayer.Character
+            local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+            while tpwalking and chr and hum and hum.Parent do
+                local delta = RunService.Heartbeat:Wait()
+                if hum.MoveDirection.Magnitude > 0 then
+                    chr:TranslateBy(hum.MoveDirection * walktpSpeed * delta)
+                end
+                chr = LocalPlayer.Character
+                hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+            end
+        end)
+    end
+end
+
+-- Toggle UI
+local TPWalkToggle = Tab:CreateToggle({
+    Name = "Speed Boost",
+    CurrentValue = false,
+    Flag = "TPWalkToggle",
+    Callback = function(Value)
+        setTPWalkState(Value)
+    end
+})
+
+-- Keybind UI
+local KeybindTPWalk = Tab:CreateKeybind({
+    Name = "TOGGLE SPEED BOOST (Key)",
+    CurrentKeybind = "H", -- default tombol
+    HoldToInteract = false,
+    Flag = "KeybindTPWalk",
+    Callback = function()
+        setTPWalkState(not tpwalking)
+    end
+})
+
 
 -- Slider
 Tab:CreateSlider(
