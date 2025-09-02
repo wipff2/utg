@@ -791,9 +791,6 @@ local roleColors = {
     RunnerTagger = Color3.fromRGB(255, 0, 0),
     InfectedRunner = Color3.fromRGB(255, 0, 0)
 }
-
--- ESP Objects
--- Changed from CoreGui to PlayerGui
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ESPFolder_" .. math.random(10000, 99999) -- Added random suffix
 espFolder.Parent = localPlayer:WaitForChild("PlayerGui") -- Changed parent
