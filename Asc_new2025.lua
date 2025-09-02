@@ -88,7 +88,7 @@ local roleTagRules = {
     Medic = {"Sick", "Peasent", "Infect", "Infected"},
     Headless = {"Neutral", "Witch"},
     Peasent = {"Knight", "Crown", "SoloCrown", "Headless", "Witches", "Witch", "Hallows2024_Witch"},
-    Hallows2024_Witch = ["Peasent"]
+    Hallows2024_Witch = ["Peasent"],
     Alone = {"Alone", "Neutral", "Runner"},
     hallows2024_frozen = {"Survivor", "Captured"},
     hallows2024_saint = {"Survivor", "Captured"},
@@ -931,7 +931,6 @@ local function shouldShowTracer(player)
     if tracerConfig.ignoreDead and isDead then
         return false
     end
-
     -- Team check
     if tracerConfig.teamCheck then
         local playerRole = player:FindFirstChild("PlayerRole")
@@ -1091,7 +1090,6 @@ local function createESP(player)
             createTracer(player)
         end
     end
-
     -- Connect role change event
     local role = player:FindFirstChild("PlayerRole")
     if role then
@@ -2674,7 +2672,7 @@ local Button =
                     Title = "PANIC Activated",
                     Content = "All features have been turned off",
                     Duration = 6.5,
-                    Image = 4483362458,
+                    Image = "rewind",
                 }
             )
         end
