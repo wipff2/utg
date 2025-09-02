@@ -269,29 +269,32 @@ local function createPOVCircle()
     centerDot.Radius = 2
 end
 
--- Update the POV circle update function
 local function updatePOVCircle()
+    -- stop kalau circle dimatikan
     if not (povCircleEnabled and showPOVCircle) then
-        if circleBorder then
-            circleBorder.Visible = false
-        end
-        if centerDot then
-            centerDot.Visible = false
-        end
+        if circleBorder then circleBorder.Visible = false end
+        if centerDot then centerDot.Visible = false end
         return
     end
 
-    if not circleBorder then
+    -- kalau camera belum ada, jangan lanjut
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+
+    -- kalau object belum ada, buat dulu
+    if not circleBorder or not centerDot then
         createPOVCircle()
     end
 
-    local camera = workspace.CurrentCamera
+    -- kalau circle masih gagal kebuat, jangan lanjut
+    if not circleBorder or not centerDot then return end
+
     local viewportSize = camera.ViewportSize
     local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
     local radius = math.min(viewportSize.X, viewportSize.Y) / 2 * povCircleRadius
 
-    -- Rainbow color effect
-    if rainbowColorEnabled and circleBorder then
+    -- rainbow color
+    if rainbowColorEnabled then
         local hue = (tick() * rainbowColorSpeed) % 1
         circleBorder.Color = Color3.fromHSV(hue, 1, 1)
     end
@@ -300,10 +303,8 @@ local function updatePOVCircle()
     circleBorder.Radius = radius
     circleBorder.Visible = true
 
-    if centerDot then
-        centerDot.Position = center
-        centerDot.Visible = true
-    end
+    centerDot.Position = center
+    centerDot.Visible = true
 end
 
 local function isPlayerInCenter(player)
@@ -608,7 +609,7 @@ local TogglePOVCircleEnabled =
 local ToggleShowPOVCircle =
     Tab:CreateToggle(
     {
-        Name = "Show POV Circle Border",
+        Name = "Show POV Circle",
         CurrentValue = false,
         Flag = "ShowPOVCircle",
         Callback = function(Value)
@@ -621,7 +622,7 @@ local ToggleShowPOVCircle =
 local SliderPOVCircleSize =
     Tab:CreateSlider(
     {
-        Name = "Circle Border Size",
+        Name = "Circle Size",
         Range = {0.5, 2},
         Increment = 0.05,
         Suffix = "",
@@ -637,7 +638,7 @@ local SliderPOVCircleSize =
 local SliderPOVCircleThickness =
     Tab:CreateSlider(
     {
-        Name = "Border Thickness",
+        Name = "Circle Thickness",
         Range = {1, 10},
         Increment = 1,
         Suffix = "px",
@@ -2158,6 +2159,52 @@ local Button =
         end
     }
 )
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local localPlayer = Players.LocalPlayer
+local votingValue = ReplicatedStorage:WaitForChild("Values"):WaitForChild("Voting")
+
+-- Variabel global toggle
+local blockVoting = false
+
+-- Fungsi utama: blokir voting (selalu false + hide UI)
+local function handleVoting()
+    if not blockVoting then return end
+
+    -- Force value jadi false
+    if votingValue.Value == true then
+        votingValue.Value = false
+    end
+
+    -- Sembunyikan UI kalau ada
+    local gui = localPlayer.PlayerGui:FindFirstChild("VotingGui") -- ganti "VotingGui" sesuai nama aslinya
+    if gui then
+        gui.Enabled = false
+    end
+end
+
+-- Dengarkan perubahan Voting
+votingValue.Changed:Connect(handleVoting)
+
+-- Dengarkan ketika UI Voting muncul di PlayerGui
+localPlayer.PlayerGui.ChildAdded:Connect(function(child)
+    if blockVoting and child.Name == "VotingGui" then
+        child.Enabled = false
+    end
+end)
+
+--  Toggle UI
+local ToggleVoting = Tab:CreateToggle({
+    Name = "Block Voting",
+    CurrentValue = false,
+    Flag = "ToggleVoting",
+    Callback = function(Value)
+        blockVoting = Value
+        if blockVoting then
+            handleVoting()
+        end
+    end,
+})
 local Section = Tab:CreateSection("Code")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RedeemEvent = ReplicatedStorage.Events.game.ui.RedeemCode
@@ -2626,7 +2673,7 @@ local Button =
                     Title = "PANIC Activated",
                     Content = "All features have been turned off",
                     Duration = 6.5,
-                    Image = 4483362458
+                    Image = 4483362458,
                 }
             )
         end
