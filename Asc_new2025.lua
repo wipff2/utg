@@ -229,12 +229,13 @@ local Button =
                 function()
                     return loadstring(
                         game:HttpGet("https://raw.githubusercontent.com/nAlwspa/Into/refs/heads/main/tager")
+                        
                     )()
                 end
             )
 
             if not success then
-                warn("[ERROR] Failed to load:", result)
+                warn("[ERROR] Failed to load")
             end
         end
     }
@@ -463,7 +464,6 @@ local function getLowestHealthTarget()
 
     return targetPlayer
 end
-
 local function tagPlayer(player)
     if not tagEnabled or not isValidTarget(player) or shouldStopTagging() then
         return
@@ -480,6 +480,9 @@ local function tagPlayer(player)
     local currentTime = tick()
     if lastTagTime[player] and currentTime - lastTagTime[player] < 1 then
         return
+    end
+    if lastGlobalTag and currentTime - lastGlobalTag < 0.3 then
+        return -- debounce global biar lebih natural
     end
 
     local localCharacter = localPlayer.Character
@@ -500,41 +503,49 @@ local function tagPlayer(player)
         return
     end
 
+    -- tambahkan random offset supaya tidak selalu tepat di HRP
+    local offset = Vector3.new(
+        math.random(-5, 5) / 10, -- ±0.5 stud X
+        0,
+        math.random(-5, 5) / 10  -- ±0.5 stud Z
+    )
+
     local args = {
         [1] = targetHumanoid,
-        [2] = targetHRP.Position
+        [2] = targetHRP.Position + offset
     }
 
-    local success, response =
-        pcall(
-        function()
-            return tagEventPath:InvokeServer(unpack(args))
-        end
-    )
+    local success, response = pcall(function()
+        return tagEventPath:InvokeServer(unpack(args))
+    end)
 
     if success then
         lastTagTime[player] = currentTime
+        lastGlobalTag = currentTime
 
         if legitTag then
-            local animFolder =
-                ReplicatedStorage:FindFirstChild("Animations") and ReplicatedStorage.Animations:FindFirstChild("Base")
-            if animFolder then
-                local tagAnim = animFolder:FindFirstChild("Tag1") or animFolder:FindFirstChild("Tag2")
-                if tagAnim then
-                    local animator =
-                        localCharacter:FindFirstChild("Humanoid") and localCharacter.Humanoid:FindFirstChild("Animator")
-                    if animator then
-                        local animation = animator:LoadAnimation(tagAnim)
-                        local isPlaying = false
+            local humanoid = localCharacter:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                local animator = humanoid:FindFirstChildOfClass("Animator")
+                if not animator then
+                    animator = Instance.new("Animator")
+                    animator.Parent = humanoid
+                end
+
+                local animFolder = ReplicatedStorage:FindFirstChild("Animations")
+                    and ReplicatedStorage.Animations:FindFirstChild("Base")
+                if animFolder then
+                    local tagAnim = animFolder:FindFirstChild("Tag1") or animFolder:FindFirstChild("Tag2")
+                    if tagAnim then
+                        -- stop anim lama dulu
                         for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
                             if track.Animation == tagAnim then
-                                isPlaying = true
-                                break
+                                track:Stop()
                             end
                         end
-                        if not isPlaying then
-                            animation:Play()
-                        end
+
+                        local animation = animator:LoadAnimation(tagAnim)
+                        animation:Play()
                     end
                 end
             end
@@ -543,7 +554,6 @@ local function tagPlayer(player)
         warn("[ERROR] Failed to tag:", player.Name, "Error:", response)
     end
 end
-
 local function getNearestPlayer()
     local nearestPlayer = nil
     local shortestDistance = math.huge
