@@ -119,29 +119,32 @@ local Paragraph =
     {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate ,4.you get REPORT"}
 )
 local Paragraph = Tab:CreateParagraph({Title = "warning", Content = "Please use it at your own discretion."})
-local ToggleTag =
-    Tab:CreateToggle(
-    {
-        Name = "Silent Tag ",
-        CurrentValue = false,
-        Flag = "AutoTag",
-        Callback = function(Value)
-            tagEnabled = Value
-        end
-    }
-)
-local KeybindToggleTag =
-    Tab:CreateKeybind({
-        Name = "MANUAL SILENT TAG(Key)",
-        CurrentKeybind = "T", -- default tombol
-        HoldToInteract = false,
-        Flag = "KeybindToggleTag",
-        Callback = function()
-            tagEnabled = not tagEnabled
-            ToggleTag:Set(tagEnabled)
-        end
-    }
-)
+local ToggleTag = Tab:CreateToggle({
+   Name = "Silent Tag",
+   CurrentValue = false,
+   Flag = "AutoTag",
+   Callback = function(Value)
+      tagEnabled = Value
+      print("Silent Tag:", Value)
+   end,
+})
+
+local KeybindToggleTag = Tab:CreateKeybind({
+   Name = "Manual Silent Tag (Key)",
+   CurrentKeybind = "T",
+   HoldToInteract = false,
+   Flag = "KeybindToggleTag",
+   Callback = function()
+      tagEnabled = not tagEnabled
+      print("Silent Tag:", tagEnabled)
+
+      -- update UI toggle juga (amanin pake pcall biar nggak error)
+      pcall(function()
+         ToggleTag:Set(tagEnabled)
+      end)
+   end,
+})
+
 local ToggleFilterDead =
     Tab:CreateToggle(
     {
