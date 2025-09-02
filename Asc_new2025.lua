@@ -1574,15 +1574,21 @@ local ToggleEsp =
             initializeESP()
         end
     })
+
 local KeybindToggleEsp =
     Tab:CreateKeybind({
         Name = "TOGGLE ESP (Key)",
-        CurrentKeybind = "Y", -- default tombol ESP
+        CurrentKeybind = "Y",
         HoldToInteract = false,
         Flag = "KeybindToggleEsp",
         Callback = function()
             espConfig.enabled = not espConfig.enabled
-            ToggleEsp:Set(espConfig.enabled) -- update toggle UI agar sinkron
+
+            -- update toggle UI aman
+            pcall(function()
+                ToggleEsp:Set(espConfig.enabled)
+            end)
+
             initializeESP()
         end
     })
