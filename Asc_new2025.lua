@@ -58,7 +58,7 @@ local lastGlobalTagTime = 0
 
 -- POV Circle Settings
 local povCircleEnabled = false
-local showPOVCircle = false
+local showPOVCircle = true
 local povCircleRadius = 1.5 -- 0.5-0.9 (relative to screen)
 local povCircleThickness = 1 -- pixels
 local povCircleColor = Color3.fromRGB(255, 50, 50)
@@ -604,19 +604,17 @@ RunService.Heartbeat:Connect(function()
     updatePOVCircle()
 end)
 local Section = Tab:CreateSection("Pov")
--- UI Elements
 local TogglePOVCircleEnabled =
-    Tab:CreateToggle(
-    {
+    Tab:CreateToggle({
         Name = "Enable POV Circle Tagging",
         CurrentValue = false,
         Flag = "POVCircleEnabled",
         Callback = function(Value)
             povCircleEnabled = Value
-            updatePOVCircle()
+            updatePOVCircle() -- pastikan function sudah ada sebelum ini
         end
-    }
-)
+    })
+
 
 local ToggleShowPOVCircle =
     Tab:CreateToggle(
