@@ -1785,8 +1785,11 @@ local KeybindToggleNoclip = Tab:CreateKeybind({
     Flag = "KeybindToggleNoclip",
     Callback = function()
         if uiClosed then return end -- kalau UI sudah ditutup, abaikan
-        setNoclipState(not noclipEnabled)
-    end
+      setNoclipState = not setNoclipState
+      pcall(function()
+        ToggleTag:Set(setNoclipState)
+    end)
+end,
 })
 
 
@@ -1889,8 +1892,11 @@ local KeybindTPWalk = Tab:CreateKeybind({
     Flag = "KeybindTPWalk",
     Callback = function()
         if uiClosed then return end -- kalau UI sudah ditutup, abaikan
-        setTPWalkState(not tpwalking)
-    end
+        setTPWalkState = not setTPWalkState
+      pcall(function()
+        ToggleTag:Set(setTPWalkState)
+    end)
+end,
 })
 
 
