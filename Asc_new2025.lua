@@ -33,7 +33,7 @@ local Window =
 )
 
 -------------------- taging --------------------
-local Tab = Window:CreateTab("MAIN", 4483362458) -- Title, Image
+local Tab = Window:CreateTab("MAIN", 4483362458)
 local Section = Tab:CreateSection("Taging")
 ------------------------------------------------------------
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -56,14 +56,13 @@ local roleFilterEnabled = false
 local stopDuringVoting = false
 local lastGlobalTagTime = 0
 
--- POV Circle Settings
 local povCircleEnabled = false
-local showPOVCircle = true
+local showPOVCircle = false
 local povCircleRadius = 1.5 -- 0.5-0.9 (relative to screen)
 local povCircleThickness = 1 -- pixels
 local povCircleColor = Color3.fromRGB(255, 50, 50)
 local povCircleTransparency = 1
-local rainbowColorEnabled = true
+local rainbowColorEnabled = false
 local rainbowColorSpeed = 0.6
 
 local roleTagRules = {
@@ -87,7 +86,7 @@ local roleTagRules = {
     Knight = {"Runner", "Peasent", "Peasant"},
     Medic = {"Sick", "Peasent", "Infect", "Infected"},
     Headless = {"Neutral", "Witch"},
-    Peasent = {"Knight", "Crown", "SoloCrown", "Headless", "Witches", "Witch", "Hallows2024_Witch"},
+    Peasant = {"Knight", "Crown", "SoloCrown", "Headless", "Witches", "Witch", "Hallows2024_Witch"},
     Hallows2024_Witch = {"Peasent"},
     Alone = {"Alone", "Neutral", "Runner"},
     hallows2024_frozen = {"Survivor", "Captured"},
@@ -208,7 +207,7 @@ local SliderTagRange =
     Tab:CreateSlider(
     {
         Name = "Tag Distance (Don't change for safe)",
-        Range = {1, 20}, -- Atur sesuai kebutuhan
+        Range = {1, 20}, 
         Increment = 1,
         Suffix = " studs",
         CurrentValue = tagAuraRange,
@@ -218,8 +217,7 @@ local SliderTagRange =
         end
     }
 )
-SliderTagRange:Set(tagAuraRange)
-local Button =
+local unlimitedtag =
     Tab:CreateButton(
     {
         Name = "Unlimited tag (can't turn off)",
@@ -614,8 +612,6 @@ local TogglePOVCircleEnabled =
             updatePOVCircle() -- pastikan function sudah ada sebelum ini
         end
     })
-
-
 local ToggleShowPOVCircle =
     Tab:CreateToggle(
     {
@@ -628,7 +624,6 @@ local ToggleShowPOVCircle =
         end
     }
 )
-
 local SliderPOVCircleSize =
     Tab:CreateSlider(
     {
@@ -640,23 +635,6 @@ local SliderPOVCircleSize =
         Flag = "POVCircleSize",
         Callback = function(Value)
             povCircleRadius = Value
-            updatePOVCircle()
-        end
-    }
-)
-
-local SliderPOVCircleThickness =
-    Tab:CreateSlider(
-    {
-        Name = "Circle Thickness",
-        Range = {1, 10},
-        Increment = 1,
-        Suffix = "px",
-        CurrentValue = povCircleThickness,
-        Flag = "POVCircleThickness",
-        Callback = function(Value)
-            povCircleThickness = Value
-            createPOVCircle() -- Recreate for thickness changes
             updatePOVCircle()
         end
     }
@@ -673,22 +651,6 @@ local ToggleRainbowColor =
         end
     }
 )
-
-local SliderRainbowSpeed =
-    Tab:CreateSlider(
-    {
-        Name = "Rainbow Speed",
-        Range = {0.1, 3},
-        Increment = 0.1,
-        Suffix = "x",
-        CurrentValue = rainbowColorSpeed,
-        Flag = "RainbowSpeed",
-        Callback = function(Value)
-            rainbowColorSpeed = Value
-        end
-    }
-)
--- Initialize
 createPOVCircle()
 
 -- Main loop
@@ -1649,21 +1611,6 @@ Tab:CreateToggle(
         end
     }
 )
-
-Tab:CreateSlider(
-    {
-        Name = "Size",
-        Range = {1, 40},
-        Increment = 1,
-        Suffix = " Size",
-        CurrentValue = espConfig.size,
-        Flag = "ESPSize",
-        Callback = function(Value)
-            espConfig.size = Value
-            forceFullUpdate()
-        end
-    }
-)
 local Section = Tab:CreateSection("Line esp(Lag)")
 -- Toggle ESP Line
 local ToggleLine = Tab:CreateToggle({
@@ -1739,34 +1686,6 @@ Tab:CreateToggle(
         end
     }
 )
-Tab:CreateSlider(
-    {
-        Name = "Line Thickness",
-        Range = {1, 5},
-        Increment = 1,
-        Suffix = "px",
-        CurrentValue = tracerConfig.thickness,
-        Flag = "TracerThickness",
-        Callback = function(Value)
-            tracerConfig.thickness = Value
-        end
-    }
-)
-
-Tab:CreateSlider(
-    {
-        Name = "Line Transparency",
-        Range = {0, 1},
-        Increment = 1,
-        Suffix = "",
-        CurrentValue = tracerConfig.transparency,
-        Flag = "TracerTransparency",
-        Callback = function(Value)
-            tracerConfig.transparency = Value
-        end
-    }
-)
-
 -- Color Controls
 Tab:CreateToggle(
     {
@@ -1790,21 +1709,6 @@ Tab:CreateToggle(
         end
     }
 )
-
-Tab:CreateSlider(
-    {
-        Name = "raimbow Speed",
-        Range = {0.1, 5},
-        Increment = 0.1,
-        Suffix = "x",
-        CurrentValue = colorConfig.rainbowSpeed,
-        Flag = "RainbowSpeed",
-        Callback = function(Value)
-            colorConfig.rainbowSpeed = Value
-        end
-    }
-)
-
 Tab:CreateColorPicker(
     {
         Name = "costom Color set",
@@ -1993,7 +1897,7 @@ local KeybindTPWalk = Tab:CreateKeybind({
 
 
 -- Slider
-Tab:CreateSlider(
+local SpeedAmount = Tab:CreateSlider(
     {
         Name = "Speed Boost amount",
         Range = {1, 40},
@@ -2183,7 +2087,7 @@ local Toggle = Tab:CreateToggle({
 local Tab = Window:CreateTab("Misc", 4483362458)
 ------------------------------------------------------------
 local Section = Tab:CreateSection("Close Rayfield ui")
-local Button =
+local ui =
     Tab:CreateButton(
     {
         Name = "Permanent Close 1 ui",
@@ -2395,7 +2299,7 @@ local function redeemAllCodes()
 end
 
 -- UI Button
-local Button =
+local rendemcode =
     Tab:CreateButton(
     {
         Name = "Auto Redeem code",
@@ -2551,7 +2455,7 @@ if Tab then
     })
 end
 
-local Button =
+local cacheclearer =
     Tab:CreateButton(
     {
         Name = "Clear Cache",
@@ -2620,7 +2524,7 @@ local Label = Tab:CreateLabel("Last Update:29/08/2025", "flag", Color3.fromRGB(0
 ------------------------------------------------------------
 --------------------Panic Mode --------------------
 local Section = Tab:CreateSection("Emergency")
-local Button =
+local Panicmode =
     Tab:CreateButton(
     {
         Name = "PANIC (Turn off all features)",
