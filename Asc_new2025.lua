@@ -135,9 +135,6 @@ local KeybindToggleTag = Tab:CreateKeybind({
    Flag = "KeybindToggleTag",
    Callback = function()
       tagEnabled = not tagEnabled
-      print("Silent Tag:", tagEnabled)
-
-      -- update UI toggle juga (amanin pake pcall biar nggak error)
       pcall(function()
          ToggleTag:Set(tagEnabled)
       end)
