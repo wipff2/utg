@@ -761,7 +761,6 @@ local roleColors = {
 }
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ESPFolder_" .. math.random(10000, 99999) -- Added random suffix
-espFolder.Parent = localPlayer:WaitForChild("PlayerGui") -- Changed parent
 local espObjects = {}
 local tracerObjects = {}
 local connections = {}
@@ -2483,7 +2482,6 @@ local cacheclearer =
                 -- Membuat folder baru
                 espFolder = Instance.new("Folder")
                 espFolder.Name = "ESPFolder_" .. math.random(10000, 99999)
-                espFolder.Parent = localPlayer:WaitForChild("PlayerGui")
             end
 
             -- Memutuskan semua koneksi event
