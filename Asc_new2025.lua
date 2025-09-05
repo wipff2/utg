@@ -123,6 +123,7 @@ local ToggleTag = Tab:CreateToggle({
    CurrentValue = false,
    Flag = "AutoTag",
    Callback = function(Value)
+    if uiClosed then return end
       tagEnabled = Value
       print("Silent Tag:", Value)
    end,
