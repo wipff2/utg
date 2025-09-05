@@ -45,7 +45,6 @@ local tagEventPath =
     ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("game") and
     ReplicatedStorage.Events.game:FindFirstChild("tags") and
     ReplicatedStorage.Events.game.tags:FindFirstChild("TagPlayer")
-
 local lastTagTime = {}
 local tagAuraRange = UserInputService.TouchEnabled and 7 or 8
 local tagEnabled = false
@@ -55,6 +54,7 @@ local legitTag = false
 local roleFilterEnabled = false
 local stopDuringVoting = false
 local lastGlobalTagTime = 0
+local uiClosed = false
 
 local povCircleEnabled = false
 local showPOVCircle = false
@@ -134,6 +134,7 @@ local KeybindToggleTag = Tab:CreateKeybind({
    HoldToInteract = false,
    Flag = "KeybindToggleTag",
    Callback = function()
+    if uiClosed then return end 
       tagEnabled = not tagEnabled
       pcall(function()
          ToggleTag:Set(tagEnabled)
@@ -200,8 +201,7 @@ local ToggleStopVoting =
         end
     }
 )
-local SliderTagRange =
-    Tab:CreateSlider(
+local SliderTagRange = Tab:CreateSlider(
     {
         Name = "Tag Distance (Don't change for safe)",
         Range = {1, 20}, 
@@ -621,8 +621,7 @@ local ToggleShowPOVCircle =
         end
     }
 )
-local SliderPOVCircleSize =
-    Tab:CreateSlider(
+local SliderPOVCircleSize = Tab:CreateSlider(
     {
         Name = "Circle Size",
         Range = {0.5, 2},
@@ -1546,6 +1545,7 @@ local KeybindToggleEsp =
         HoldToInteract = false,
         Flag = "KeybindToggleEsp",
         Callback = function()
+            if uiClosed then return end -- kalau UI sudah ditutup, abaikan
             espConfig.enabled = not espConfig.enabled
 
             -- update toggle UI aman
@@ -1784,6 +1784,7 @@ local KeybindToggleNoclip = Tab:CreateKeybind({
     HoldToInteract = false,
     Flag = "KeybindToggleNoclip",
     Callback = function()
+        if uiClosed then return end -- kalau UI sudah ditutup, abaikan
         setNoclipState(not noclipEnabled)
     end
 })
@@ -1887,6 +1888,7 @@ local KeybindTPWalk = Tab:CreateKeybind({
     HoldToInteract = false,
     Flag = "KeybindTPWalk",
     Callback = function()
+        if uiClosed then return end -- kalau UI sudah ditutup, abaikan
         setTPWalkState(not tpwalking)
     end
 })
@@ -2083,15 +2085,13 @@ local Toggle = Tab:CreateToggle({
 local Tab = Window:CreateTab("Misc", 4483362458)
 ------------------------------------------------------------
 local Section = Tab:CreateSection("Close Rayfield ui")
-local ui =
-    Tab:CreateButton(
-    {
-        Name = "Permanent Close 1 ui",
-        Callback = function()
-            Rayfield:Destroy()
-        end
-    }
-)
+local ui = Tab:CreateButton({
+   Name = "Permanent Close 1 ui",
+   Callback = function()
+      uiClosed = true
+      Rayfield:Destroy()
+   end
+})
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer = Players.LocalPlayer
