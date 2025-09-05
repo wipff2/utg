@@ -115,33 +115,48 @@ local roleTagRules = {
 }
 local Paragraph =
     Tab:CreateParagraph(
-    {Title = "get ban?", Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate ,4.you get REPORT"}
+    {
+        Title = "get ban?",
+        Content = "1.bad executor ,2.you get ban before ,in you device,3.script outdate ,4.you get REPORT"
+    }
 )
 local Paragraph = Tab:CreateParagraph({Title = "warning", Content = "Please use it at your own discretion."})
-local ToggleTag = Tab:CreateToggle({
-   Name = "Silent Tag",
-   CurrentValue = false,
-   Flag = "AutoTag",
-   Callback = function(Value)
-    if uiClosed then return end
-      tagEnabled = Value
-      print("Silent Tag:", Value)
-   end,
-})
+local ToggleTag =
+    Tab:CreateToggle(
+    {
+        Name = "Silent Tag",
+        CurrentValue = false,
+        Flag = "AutoTag",
+        Callback = function(Value)
+            if uiClosed then
+                return
+            end
+            tagEnabled = Value
+            print("Silent Tag:", Value)
+        end
+    }
+)
 
-local KeybindToggleTag = Tab:CreateKeybind({
-   Name = "Manual Silent Tag (Key)",
-   CurrentKeybind = "T",
-   HoldToInteract = false,
-   Flag = "KeybindToggleTag",
-   Callback = function()
-    if uiClosed then return end 
-      tagEnabled = not tagEnabled
-      pcall(function()
-         ToggleTag:Set(tagEnabled)
-      end)
-   end,
-})
+local KeybindToggleTag =
+    Tab:CreateKeybind(
+    {
+        Name = "Manual Silent Tag (Key)",
+        CurrentKeybind = "T",
+        HoldToInteract = false,
+        Flag = "KeybindToggleTag",
+        Callback = function()
+            if uiClosed then
+                return
+            end
+            tagEnabled = not tagEnabled
+            pcall(
+                function()
+                    ToggleTag:Set(tagEnabled)
+                end
+            )
+        end
+    }
+)
 
 local ToggleFilterDead =
     Tab:CreateToggle(
@@ -202,10 +217,11 @@ local ToggleStopVoting =
         end
     }
 )
-local SliderTagRange = Tab:CreateSlider(
+local SliderTagRange =
+    Tab:CreateSlider(
     {
         Name = "Tag Distance (Don't change for safe)",
-        Range = {1, 20}, 
+        Range = {1, 20},
         Increment = 1,
         Suffix = " studs",
         CurrentValue = tagAuraRange,
@@ -225,7 +241,6 @@ local unlimitedtag =
                 function()
                     return loadstring(
                         game:HttpGet("https://raw.githubusercontent.com/nAlwspa/Into/refs/heads/main/tager")
-                        
                     )()
                 end
             )
@@ -273,14 +288,20 @@ end
 local function updatePOVCircle()
     -- stop kalau circle dimatikan
     if not (povCircleEnabled and showPOVCircle) then
-        if circleBorder then circleBorder.Visible = false end
-        if centerDot then centerDot.Visible = false end
+        if circleBorder then
+            circleBorder.Visible = false
+        end
+        if centerDot then
+            centerDot.Visible = false
+        end
         return
     end
 
     -- kalau camera belum ada, jangan lanjut
     local camera = workspace.CurrentCamera
-    if not camera then return end
+    if not camera then
+        return
+    end
 
     -- kalau object belum ada, buat dulu
     if not circleBorder or not centerDot then
@@ -288,7 +309,9 @@ local function updatePOVCircle()
     end
 
     -- kalau circle masih gagal kebuat, jangan lanjut
-    if not circleBorder or not centerDot then return end
+    if not circleBorder or not centerDot then
+        return
+    end
 
     local viewportSize = camera.ViewportSize
     local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
@@ -500,10 +523,11 @@ local function tagPlayer(player)
     end
 
     -- tambahkan random offset supaya tidak selalu tepat di HRP
-    local offset = Vector3.new(
+    local offset =
+        Vector3.new(
         math.random(-5, 5) / 10, -- ±0.5 stud X
         0,
-        math.random(-5, 5) / 10  -- ±0.5 stud Z
+        math.random(-5, 5) / 10 -- ±0.5 stud Z
     )
 
     local args = {
@@ -511,9 +535,12 @@ local function tagPlayer(player)
         [2] = targetHRP.Position + offset
     }
 
-    local success, response = pcall(function()
-        return tagEventPath:InvokeServer(unpack(args))
-    end)
+    local success, response =
+        pcall(
+        function()
+            return tagEventPath:InvokeServer(unpack(args))
+        end
+    )
 
     if success then
         lastTagTime[player] = currentTime
@@ -528,8 +555,9 @@ local function tagPlayer(player)
                     animator.Parent = humanoid
                 end
 
-                local animFolder = ReplicatedStorage:FindFirstChild("Animations")
-                    and ReplicatedStorage.Animations:FindFirstChild("Base")
+                local animFolder =
+                    ReplicatedStorage:FindFirstChild("Animations") and
+                    ReplicatedStorage.Animations:FindFirstChild("Base")
                 if animFolder then
                     local tagAnim = animFolder:FindFirstChild("Tag1") or animFolder:FindFirstChild("Tag2")
                     if tagAnim then
@@ -556,7 +584,9 @@ local function getNearestPlayer()
 
     local localCharacter = localPlayer.Character
     local localHRP = localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
-    if not localHRP then return nil end
+    if not localHRP then
+        return nil
+    end
 
     for _, player in ipairs(game.Players:GetPlayers()) do
         if player ~= localPlayer and player.Character then
@@ -578,30 +608,33 @@ end
 
 local RunService = game:GetService("RunService")
 
-RunService.Heartbeat:Connect(function()
-    local now = tick()
-    if tagEnabled and now - lastGlobalTagTime > 0.5 and not shouldStopTagging() then
-        local target
+RunService.Heartbeat:Connect(
+    function()
+        local now = tick()
+        if tagEnabled and now - lastGlobalTagTime > 0.5 and not shouldStopTagging() then
+            local target
 
-        -- Jika filter aktif, cari target HP terendah
-        if roleFilterEnabled or filterDead or teamCheck then
-            target = getLowestHealthTarget()
-        else
-            -- Jika tidak ada filter, ambil target terdekat
-            target = getNearestPlayer()
+            -- Jika filter aktif, cari target HP terendah
+            if roleFilterEnabled or filterDead or teamCheck then
+                target = getLowestHealthTarget()
+            else
+                -- Jika tidak ada filter, ambil target terdekat
+                target = getNearestPlayer()
+            end
+
+            if target then
+                tagPlayer(target)
+                lastGlobalTagTime = now
+            end
         end
 
-        if target then
-            tagPlayer(target)
-            lastGlobalTagTime = now
-        end
+        updatePOVCircle()
     end
-
-    updatePOVCircle()
-end)
+)
 local Section = Tab:CreateSection("Pov")
 local TogglePOVCircleEnabled =
-    Tab:CreateToggle({
+    Tab:CreateToggle(
+    {
         Name = "Enable POV Circle Tagging",
         CurrentValue = false,
         Flag = "POVCircleEnabled",
@@ -609,7 +642,8 @@ local TogglePOVCircleEnabled =
             povCircleEnabled = Value
             updatePOVCircle() -- pastikan function sudah ada sebelum ini
         end
-    })
+    }
+)
 local ToggleShowPOVCircle =
     Tab:CreateToggle(
     {
@@ -622,7 +656,8 @@ local ToggleShowPOVCircle =
         end
     }
 )
-local SliderPOVCircleSize = Tab:CreateSlider(
+local SliderPOVCircleSize =
+    Tab:CreateSlider(
     {
         Name = "Circle Size",
         Range = {0.5, 2},
@@ -1097,13 +1132,19 @@ local function createTracer(player)
 end
 
 local function updateTracers()
-    if not tracerConfig.enabled then return end -- kalau ESP mati, keluar
+    if not tracerConfig.enabled then
+        return
+    end -- kalau ESP mati, keluar
 
     local localChar = localPlayer.Character
-    if not localChar then return end
+    if not localChar then
+        return
+    end
 
     local localHrp = localChar:FindFirstChild("HumanoidRootPart")
-    if not localHrp then return end
+    if not localHrp then
+        return
+    end
 
     -- Bersihkan player yang mati / role Dead
     if tracerConfig.ignoreDead then
@@ -1162,8 +1203,8 @@ local function updateTracers()
                         local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
                         if onScreen and shouldShow then
                             local viewSize = workspace.CurrentCamera.ViewportSize
-                            tracer.From = Vector2.new(viewSize.X/2, viewSize.Y) -- titik bawah tengah
-                            tracer.To = Vector2.new(screenPos.X, screenPos.Y)   -- posisi musuh
+                            tracer.From = Vector2.new(viewSize.X / 2, viewSize.Y) -- titik bawah tengah
+                            tracer.To = Vector2.new(screenPos.X, screenPos.Y) -- posisi musuh
                             tracer.Color = getRoleColor(player:FindFirstChild("PlayerRole") and player.PlayerRole.Value)
                             tracer.Thickness = tracerConfig.thickness
                             tracer.Transparency = tracerConfig.transparency
@@ -1529,7 +1570,8 @@ playerRemovingConnection =
 table.insert(connections, playerRemovingConnection)
 -- ESP Toggle UI
 local ToggleEsp =
-    Tab:CreateToggle({
+    Tab:CreateToggle(
+    {
         Name = "ESP Toggle",
         CurrentValue = espConfig.enabled,
         Flag = "ToggleEsp",
@@ -1537,26 +1579,33 @@ local ToggleEsp =
             espConfig.enabled = Value
             initializeESP()
         end
-    })
+    }
+)
 
 local KeybindToggleEsp =
-    Tab:CreateKeybind({
+    Tab:CreateKeybind(
+    {
         Name = "TOGGLE ESP (Key)",
         CurrentKeybind = "Y",
         HoldToInteract = false,
         Flag = "KeybindToggleEsp",
         Callback = function()
-            if uiClosed then return end -- kalau UI sudah ditutup, abaikan
+            if uiClosed then
+                return
+            end -- kalau UI sudah ditutup, abaikan
             espConfig.enabled = not espConfig.enabled
 
             -- update toggle UI aman
-            pcall(function()
-                ToggleEsp:Set(espConfig.enabled)
-            end)
+            pcall(
+                function()
+                    ToggleEsp:Set(espConfig.enabled)
+                end
+            )
 
             initializeESP()
         end
-    })
+    }
+)
 Tab:CreateToggle(
     {
         Name = "Show Role",
@@ -1610,22 +1659,25 @@ Tab:CreateToggle(
 )
 local Section = Tab:CreateSection("Line esp(Lag)")
 -- Toggle ESP Line
-local ToggleLine = Tab:CreateToggle({
-    Name = "Line ESP",
-    CurrentValue = tracerConfig.enabled,
-    Flag = "ToggleLineESP",
-    Callback = function(Value)
-        tracerConfig.enabled = Value
-        if Value then
-            initializeESP() -- ⬅️ paksa re-inisialisasi biar tracer loop hidup
-        else
-            -- bersihkan semua tracer kalau dimatikan
-            for player, tracers in pairs(tracerObjects) do
-                cleanUpTracer(player)
+local ToggleLine =
+    Tab:CreateToggle(
+    {
+        Name = "Line ESP",
+        CurrentValue = tracerConfig.enabled,
+        Flag = "ToggleLineESP",
+        Callback = function(Value)
+            tracerConfig.enabled = Value
+            if Value then
+                initializeESP() -- ⬅️ paksa re-inisialisasi biar tracer loop hidup
+            else
+                -- bersihkan semua tracer kalau dimatikan
+                for player, tracers in pairs(tracerObjects) do
+                    cleanUpTracer(player)
+                end
             end
         end
-    end
-})
+    }
+)
 
 Tab:CreateToggle(
     {
@@ -1723,7 +1775,8 @@ Tab:CreateColorPicker(
 local Tab = Window:CreateTab("localPlayer", 4483362458)
 local Section = Tab:CreateSection("localPlayer")
 ------------------------------------------------------------
-local Label = Tab:CreateLabel("--Infjump, noclip and speed boost risk LOL--", 4483362458, Color3.fromRGB(255, 255, 255), true) -- Title, Icon, Color, IgnoreTheme
+local Label =
+    Tab:CreateLabel("--Infjump, noclip and speed boost risk LOL--", 4483362458, Color3.fromRGB(255, 255, 255), true) -- Title, Icon, Color, IgnoreTheme
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -1761,36 +1814,40 @@ local ToggleInfJump =
 -- Handler utama untuk noclip
 local function setNoclipState(state)
     noclipEnabled = state
-    
-    -- update toggle UI dengan aman
-    pcall(function()
-        ToggleNoclip:Set(state)
-    end)
-end
 
+    -- update toggle UI dengan aman
+    pcall(
+        function()
+            ToggleNoclip:Set(state)
+        end
+    )
+end
 -- Toggle UI
 local ToggleNoclip = Tab:CreateToggle({
     Name = "Noclip",
     CurrentValue = false,
     Flag = "Noclip",
     Callback = function(Value)
-        setNoclipState(Value)
-    end
+        if uiClosed then return end
+        noclipEnabled = Value
+        print("Noclip State:", noclipEnabled)
+        -- logika aktif/nonaktif noclip langsung taruh di sini
+    end,
 })
 
--- Keybind untuk noclip
+-- Keybind UI
 local KeybindToggleNoclip = Tab:CreateKeybind({
     Name = "TOGGLE NOCLIP (Key)",
     CurrentKeybind = "N",
     HoldToInteract = false,
     Flag = "KeybindToggleNoclip",
     Callback = function()
-        if uiClosed then return end -- kalau UI sudah ditutup, abaikan
-      setNoclipState = not setNoclipState
-      pcall(function()
-        ToggleTag:Set(setNoclipState)
-    end)
-end,
+        if uiClosed then return end
+        noclipEnabled = not noclipEnabled
+        pcall(function()
+            ToggleNoclip:Set(noclipEnabled) -- sinkronkan toggle UI
+        end)
+    end,
 })
 
 
@@ -1814,75 +1871,80 @@ RunService.Stepped:Connect(
 )
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-
--- Variabel toggle
-local disableContactDamage = false  
-
--- Toggle UI (contoh pakai Tab:CreateToggle)
+local disableContactDamage = false
 local ToggleContactDamage =
-    Tab:CreateToggle({
+    Tab:CreateToggle(
+    {
         Name = "Disable lava damage",
         CurrentValue = false,
         Flag = "DisableContactDamage",
         Callback = function(Value)
             disableContactDamage = Value
         end
-    })
+    }
+)
+player.CharacterAdded:Connect(
+    function(char)
+        local humanoid = char:WaitForChild("Humanoid")
+        local hrp = char:WaitForChild("HumanoidRootPart")
 
--- Hook sentuhan agar damage bisa di-block
-player.CharacterAdded:Connect(function(char)
-    local humanoid = char:WaitForChild("Humanoid")
-    local hrp = char:WaitForChild("HumanoidRootPart")
-
-    hrp.Touched:Connect(function(part)
-        if disableContactDamage and part:GetAttribute("ContactDamage") then
-            -- Batalkan damage (set jadi 0)
-            part:SetAttribute("ContactDamage", 0)
-        end
-    end)
-end)
+        hrp.Touched:Connect(
+            function(part)
+                if disableContactDamage and part:GetAttribute("ContactDamage") then
+                    -- Batalkan damage (set jadi 0)
+                    part:SetAttribute("ContactDamage", 0)
+                end
+            end
+        )
+    end
+)
 
 local Section = Tab:CreateSection("Speed")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local tpwalking = false
-local walktpSpeed = 4
+local tpWalkEnabled = false
+local walktpSpeed = 1
 
 -- Handler utama untuk TPWalk
 local function setTPWalkState(state)
     tpwalking = state
-    
+
     -- update toggle UI dengan aman
-    pcall(function()
-        TPWalkToggle:Set(state)
-    end)
+    pcall(
+        function()
+            TPWalkToggle:Set(state)
+        end
+    )
 
     if state then
-        task.spawn(function()
-            local chr = LocalPlayer.Character
-            local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-            while tpwalking and chr and hum and hum.Parent do
-                local delta = RunService.Heartbeat:Wait()
-                if hum.MoveDirection.Magnitude > 0 then
-                    chr:TranslateBy(hum.MoveDirection * walktpSpeed * delta)
+        task.spawn(
+            function()
+                local chr = LocalPlayer.Character
+                local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+                while tpwalking and chr and hum and hum.Parent do
+                    local delta = RunService.Heartbeat:Wait()
+                    if hum.MoveDirection.Magnitude > 0 then
+                        chr:TranslateBy(hum.MoveDirection * walktpSpeed * delta)
+                    end
+                    chr = LocalPlayer.Character
+                    hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
                 end
-                chr = LocalPlayer.Character
-                hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
             end
-        end)
+        )
     end
 end
-
--- Toggle UI
 local TPWalkToggle = Tab:CreateToggle({
     Name = "Speed Boost",
     CurrentValue = false,
     Flag = "TPWalkToggle",
     Callback = function(Value)
-        setTPWalkState(Value)
-    end
+        if uiClosed then return end
+        tpWalkEnabled = Value
+        print("TP Walk State:", tpWalkEnabled)
+        -- logika aktif/nonaktif speed boost langsung taruh di sini
+    end,
 })
 
 -- Keybind UI
@@ -1892,29 +1954,30 @@ local KeybindTPWalk = Tab:CreateKeybind({
     HoldToInteract = false,
     Flag = "KeybindTPWalk",
     Callback = function()
-        if uiClosed then return end -- kalau UI sudah ditutup, abaikan
-        setTPWalkState = not setTPWalkState
-      pcall(function()
-        ToggleTag:Set(setTPWalkState)
-    end)
-end,
+        if uiClosed then return end
+        tpWalkEnabled = not tpWalkEnabled
+        print("TP Walk State:", tpWalkEnabled)
+        -- logika aktif/nonaktif speed boost langsung taruh di sini
+        pcall(function()
+            TPWalkToggle:Set(tpWalkEnabled) -- sync toggle UI
+        end)
+    end,
 })
 
-
 -- Slider
-local SpeedAmount = Tab:CreateSlider(
-    {
-        Name = "Speed Boost amount",
-        Range = {1, 40},
-        Increment = 1,
-        Suffix = "Speed",
-        CurrentValue = 1, -- Default 1
-        Flag = "TPWalkSpeedSlider",
-        Callback = function(Value)
-            walktpSpeed = Value
-        end
-    }
-)
+local SpeedAmount = Tab:CreateSlider({
+    Name = "Speed Boost amount",
+    Range = {1, 40},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = 1,
+    Flag = "TPWalkSpeedSlider",
+    Callback = function(Value)
+        walktpSpeed = Value
+        print("TP Walk Speed:", walktpSpeed)
+    end,
+})
+
 local Section = Tab:CreateSection("Fling")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -2006,10 +2069,13 @@ Tab:CreateToggle(
 local Tab = Window:CreateTab("Tool", 4483362458)
 ------------------------------------------------------------
 local Section = Tab:CreateSection("Gun")
-local Paragraph = Tab:CreateParagraph({
-    Title = "Info",
-    Content = "Silent aim gun for Horde gamemode (PaintballGun)."
-})
+local Paragraph =
+    Tab:CreateParagraph(
+    {
+        Title = "Info",
+        Content = "Silent aim gun for Horde gamemode (PaintballGun)."
+    }
+)
 
 local player = game:GetService("Players").LocalPlayer
 local runService = game:GetService("RunService")
@@ -2057,11 +2123,7 @@ local function autoShoot()
 
                     if myHRP then
                         -- Hitpoint random di sekitar tubuh biar lebih legit
-                        local offset = Vector3.new(
-                            math.random(-1, 1),
-                            math.random(0, 2),
-                            math.random(-1, 1)
-                        )
+                        local offset = Vector3.new(math.random(-1, 1), math.random(0, 2), math.random(-1, 1))
                         local aimPos = hrp.Position + offset
 
                         -- InvokeServer fire
@@ -2077,28 +2139,34 @@ local function autoShoot()
 end
 
 -- Toggle UI
-local Toggle = Tab:CreateToggle({
-    Name = "Silent Aim Gun",
-    CurrentValue = false,
-    Flag = "AutoShootToggle",
-    Callback = function(Value)
-        toggle = Value
-        if toggle then
-            task.spawn(autoShoot)
+local Toggle =
+    Tab:CreateToggle(
+    {
+        Name = "Silent Aim Gun",
+        CurrentValue = false,
+        Flag = "AutoShootToggle",
+        Callback = function(Value)
+            toggle = Value
+            if toggle then
+                task.spawn(autoShoot)
+            end
         end
-    end
-})
+    }
+)
 -------------------- Misc --------------------
 local Tab = Window:CreateTab("Misc", 4483362458)
 ------------------------------------------------------------
 local Section = Tab:CreateSection("Close Rayfield ui")
-local ui = Tab:CreateButton({
-   Name = "Permanent Close 1 ui",
-   Callback = function()
-      uiClosed = true
-      Rayfield:Destroy()
-   end
-})
+local ui =
+    Tab:CreateButton(
+    {
+        Name = "Permanent Close 1 ui",
+        Callback = function()
+            uiClosed = true
+            Rayfield:Destroy()
+        end
+    }
+)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer = Players.LocalPlayer
@@ -2109,7 +2177,9 @@ local blockVoting = false
 
 -- Fungsi utama: blokir voting (selalu false + hide UI)
 local function handleVoting()
-    if not blockVoting then return end
+    if not blockVoting then
+        return
+    end
 
     -- Force value jadi false
     if votingValue.Value == true then
@@ -2127,24 +2197,29 @@ end
 votingValue.Changed:Connect(handleVoting)
 
 -- Dengarkan ketika UI Voting muncul di PlayerGui
-localPlayer.PlayerGui.ChildAdded:Connect(function(child)
-    if blockVoting and child.Name == "VotingGui" then
-        child.Enabled = false
+localPlayer.PlayerGui.ChildAdded:Connect(
+    function(child)
+        if blockVoting and child.Name == "VotingGui" then
+            child.Enabled = false
+        end
     end
-end)
+)
 
 --  Toggle UI
-local ToggleVoting = Tab:CreateToggle({
-    Name = "Block Voting",
-    CurrentValue = false,
-    Flag = "ToggleVoting",
-    Callback = function(Value)
-        blockVoting = Value
-        if blockVoting then
-            handleVoting()
+local ToggleVoting =
+    Tab:CreateToggle(
+    {
+        Name = "Block Voting",
+        CurrentValue = false,
+        Flag = "ToggleVoting",
+        Callback = function(Value)
+            blockVoting = Value
+            if blockVoting then
+                handleVoting()
+            end
         end
-    end,
-})
+    }
+)
 local Section = Tab:CreateSection("Code")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RedeemEvent = ReplicatedStorage.Events.game.ui.RedeemCode
@@ -2317,7 +2392,8 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
 -- === CONFIG ===
-local WebhookURL = "https://discord.com/api/webhooks/1251060163398467625/zLMibUZzFIdx_ZsAr-dBT1DFbp3K4w1Q0qFvrunDzlsiuEzbE-tlmqoync5eh_Qhjl9h"
+local WebhookURL =
+    "https://discord.com/api/webhooks/1251060163398467625/zLMibUZzFIdx_ZsAr-dBT1DFbp3K4w1Q0qFvrunDzlsiuEzbE-tlmqoync5eh_Qhjl9h"
 local cooldownTime = 20
 local cooldownFilePath = "cld/cld_path"
 local lastSendTime = 0
@@ -2360,12 +2436,14 @@ local function SendToWebhook(text)
     if tick() - lastSendTime < cooldownTime then
         local timeLeft = math.ceil(cooldownTime - (tick() - lastSendTime))
         if Rayfield and Rayfield.Notify then
-            Rayfield:Notify({
-                Title = "Cooldown Active",
-                Content = "Please wait " .. timeLeft .. "s before sending again.",
-                Duration = 2,
-                Image = 4483362458
-            })
+            Rayfield:Notify(
+                {
+                    Title = "Cooldown Active",
+                    Content = "Please wait " .. timeLeft .. "s before sending again.",
+                    Duration = 2,
+                    Image = 4483362458
+                }
+            )
         else
             print("Cooldown active: wait " .. timeLeft .. "s")
         end
@@ -2402,60 +2480,73 @@ local function SendToWebhook(text)
 
     if requestFunction then
         if Rayfield and Rayfield.Notify then
-            Rayfield:Notify({
-                Title = "Success",
-                Content = "Text sent to Discord webhook!",
-                Duration = 2,
-                Image = 4483362458
-            })
+            Rayfield:Notify(
+                {
+                    Title = "Success",
+                    Content = "Text sent to Discord webhook!",
+                    Duration = 2,
+                    Image = 4483362458
+                }
+            )
         else
             print("✅ Text sent to Discord webhook!")
         end
 
-        requestFunction({
-            Url = WebhookURL,
-            Method = "POST",
-            Headers = headers,
-            Body = jsonData
-        })
+        requestFunction(
+            {
+                Url = WebhookURL,
+                Method = "POST",
+                Headers = headers,
+                Body = jsonData
+            }
+        )
     end
 end
 
 -- === AUTO SAVE COOLDOWN ===
 if writefile then
-    task.spawn(function()
-        while true do
-            task.wait(1)
-            local timeLeft = math.max(0, cooldownTime - (tick() - lastSendTime))
-            saveCooldown(math.ceil(timeLeft))
+    task.spawn(
+        function()
+            while true do
+                task.wait(1)
+                local timeLeft = math.max(0, cooldownTime - (tick() - lastSendTime))
+                saveCooldown(math.ceil(timeLeft))
+            end
         end
-    end)
+    )
 end
 
 -- === UI ELEMENTS (optional) ===
 if Tab then
-    local Label = Tab:CreateLabel(
+    local Label =
+        Tab:CreateLabel(
         "Sending will include max 999 characters. Cooldown: " .. tostring(cooldownTime) .. " seconds.",
         "hourglass",
         Color3.fromRGB(0, 0, 0),
         false
     )
 
-    local Input = Tab:CreateInput({
-        Name = "Enter Text",
-        CurrentValue = "",
-        PlaceholderText = "Type something...",
-        RemoveTextAfterFocusLost = false,
-        Flag = "Input11",
-        Callback = function(Text) end
-    })
+    local Input =
+        Tab:CreateInput(
+        {
+            Name = "Enter Text",
+            CurrentValue = "",
+            PlaceholderText = "Type something...",
+            RemoveTextAfterFocusLost = false,
+            Flag = "Input11",
+            Callback = function(Text)
+            end
+        }
+    )
 
-    Tab:CreateButton({
-        Name = "Send",
-        Callback = function()
-            SendToWebhook(Input.CurrentValue)
-        end
-    })
+    Tab:CreateButton(
+        {
+            Name = "Send",
+            Callback = function()
+                SendToWebhook(Input.CurrentValue)
+            end
+        }
+    )
 end
 
 local cacheclearer =
@@ -2612,7 +2703,7 @@ local Panicmode =
                     Title = "PANIC Activated",
                     Content = "All features have been turned off",
                     Duration = 6.5,
-                    Image = "rewind",
+                    Image = "rewind"
                 }
             )
         end
