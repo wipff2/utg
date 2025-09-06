@@ -560,17 +560,17 @@ local function tagPlayer(player)
                     ReplicatedStorage.Animations:FindFirstChild("Base")
                 if animFolder then
                     local tagAnim = animFolder:FindFirstChild("Tag1") or animFolder:FindFirstChild("Tag2")
-                    if tagAnim then
-                        -- stop anim lama dulu
-                        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-                            if track.Animation == tagAnim then
-                                track:Stop()
-                            end
-                        end
+if tagAnim then
+    -- stop anim lama dulu
+    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+        if track.Animation == tagAnim then
+            track:Stop()
+        end
+    end
 
-                        local animation = animator:LoadAnimation(tagAnim)
-                        animation:Play()
-                    end
+    local animation = animator:LoadAnimation(tagAnim)
+    animation:Play()
+end
                 end
             end
         end
@@ -684,8 +684,6 @@ local ToggleRainbowColor =
     }
 )
 createPOVCircle()
-
--- Main loop
 RunService.Heartbeat:Connect(
     function()
         updatePOVCircle()
@@ -701,8 +699,6 @@ RunService.Heartbeat:Connect(
         end
     end
 )
-
--- Cleanup
 game:GetService("Players").PlayerRemoving:Connect(
     function(player)
         if player == localPlayer then
@@ -727,8 +723,6 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local localPlayer = Players.LocalPlayer
-
--- ESP Configuration
 local espConfig = {
     enabled = false,
     showName = false,
@@ -741,8 +735,6 @@ local espConfig = {
     showCrownOnly = false,
     showRunnerOnly = false
 }
-
--- Tracer Configuration
 local tracerConfig = {
     enabled = false,
     teamCheck = false,
@@ -753,8 +745,6 @@ local tracerConfig = {
     showCrownOnly = false,
     showRunnerOnly = false
 }
-
--- Color Configuration
 local colorConfig = {
     useCustomColor = false,
     rainbowMode = false,
@@ -763,8 +753,6 @@ local colorConfig = {
         Default = Color3.fromRGB(255, 255, 255)
     }
 }
-
--- Role colors configuration
 local roleColors = {
     Runner = Color3.fromRGB(0, 0, 255),
     Crown = Color3.fromRGB(255, 215, 0),
@@ -803,17 +791,12 @@ local connections = {}
 local updateQueue = {}
 local updatePending = false
 local lastUpdateTime = 0
--- Instant update queue
-local updateQueue = {}
-
--- Color functions
 local function getRainbowColor(hue)
     local r = math.sin(hue * math.pi * 2) * 0.5 + 0.5
     local g = math.sin((hue + 1 / 3) * math.pi * 2) * 0.5 + 0.5
     local b = math.sin((hue + 2 / 3) * math.pi * 2) * 0.5 + 0.5
     return Color3.new(r, g, b)
 end
-
 local function getRoleColor(roleValue)
     if colorConfig.rainbowMode then
         return getRainbowColor((tick() * colorConfig.rainbowSpeed) % 1)
@@ -1058,50 +1041,42 @@ local function createESP(player)
         queueUpdate(player)
     end
 
-    local function onCharacterAdded(player, newCharacter)
-        local humanoid = newCharacter:WaitForChild("HumanoidRootPart")
+local function onCharacterAdded(player, newCharacter)
+    local humanoid = newCharacter:WaitForChild("Humanoid")
+    local rootPart = newCharacter:WaitForChild("HumanoidRootPart")
 
-        -- Clean up old connection
-        if espObjects[player] and espObjects[player].humanoidDiedConn then
-            espObjects[player].humanoidDiedConn:Disconnect()
-        end
-
-        -- Only connect death event if ignoreDead is enabled
-        if espConfig.ignoreDead or tracerConfig.ignoreDead then
-            espObjects[player].humanoidDiedConn =
-                humanoid.Died:Connect(
-                function()
-                    -- Immediate update when player dies
-                    if espConfig.enabled then
-                        updateESPDisplay(player)
-                    end
-                    if tracerConfig.enabled then
-                        cleanUpTracer(player) -- Remove tracer immediately
-                    end
-                end
-            )
-        end
-
-        -- Initial update
-        if espConfig.enabled then
-            updateESPDisplay(player)
-        end
-        if tracerConfig.enabled then
-            createTracer(player)
-        end
+    -- Clean up old connection
+    if espObjects[player] and espObjects[player].humanoidDiedConn then
+        espObjects[player].humanoidDiedConn:Disconnect()
     end
-    -- Connect role change event
+
+    -- Only connect death event if ignoreDead is enabled
+    if espConfig.ignoreDead or tracerConfig.ignoreDead then
+        espObjects[player].humanoidDiedConn = humanoid.Died:Connect(function()
+            if espConfig.enabled then
+                updateESPDisplay(player)
+            end
+            if tracerConfig.enabled then
+                cleanUpTracer(player)
+            end
+        end)
+    end
+
+    -- Initial update
+    if espConfig.enabled then
+        updateESPDisplay(player)
+    end
+    if tracerConfig.enabled then
+        createTracer(player)
+    end
+end
     local role = player:FindFirstChild("PlayerRole")
     if role then
         espObjects[player].roleChangedConn = role.Changed:Connect(onRoleChanged)
         table.insert(espObjects[player].connections, espObjects[player].roleChangedConn)
     end
-
-    -- Connect character added event
     espObjects[player].characterAddedConn = player.CharacterAdded:Connect(onCharacterAdded)
     table.insert(espObjects[player].connections, espObjects[player].characterAddedConn)
-
-    -- Initial update
     updateESPDisplay(player)
 end
 
@@ -1308,7 +1283,8 @@ local function updatePlayerESP(player)
     end
 end
 local function onCharacterAdded(player, newCharacter)
-    local humanoid = newCharacter:WaitForChild("HumanoidRootPart")
+    local humanoid = newCharacter:WaitForChild("Humanoid") -- benar: ambil Humanoid
+    local rootPart = newCharacter:WaitForChild("HumanoidRootPart") -- untuk posisi tracer/ESP
 
     -- Initialize player entry in espObjects if not exists
     if not espObjects[player] then
@@ -1323,79 +1299,63 @@ local function onCharacterAdded(player, newCharacter)
 
     -- Only connect death event if ignoreDead is enabled
     if espConfig.ignoreDead or tracerConfig.ignoreDead then
-        espObjects[player].humanoidDiedConn =
-            humanoid.Died:Connect(
-            function()
-                -- Immediate update when player dies
-                if espConfig.enabled then
-                    updateESPDisplay(player)
-                end
-                if tracerConfig.enabled then
-                    cleanUpTracer(player) -- Remove tracer immediately
-                end
+        espObjects[player].humanoidDiedConn = humanoid.Died:Connect(function()
+            if espConfig.enabled then
+                updateESPDisplay(player)
             end
-        )
+            if tracerConfig.enabled then
+                cleanUpTracer(player) -- Remove tracer immediately
+            end
+        end)
     end
 
     -- Initial update
     if espConfig.enabled then
-        updateESPDisplay(player)
+        updateESPDisplay(player, rootPart) -- kirim rootPart kalau butuh posisi
     end
     if tracerConfig.enabled then
-        createTracer(player)
+        createTracer(player, rootPart) -- kirim rootPart kalau butuh posisi
     end
 end
 local function setupPlayerEvents()
     -- Player Added
-    table.insert(
-        connections,
-        Players.PlayerAdded:Connect(
-            function(player)
-                -- Character Added
-                table.insert(
-                    connections,
-                    player.CharacterAdded:Connect(
-                        function(character)
-                            task.wait(0.5) -- Small delay to allow character to fully load
-                            onCharacterAdded(player, character)
-                        end
-                    )
-                )
-
-                -- Role Changed
-                local role = player:FindFirstChild("PlayerRole")
-                if role then
-                    table.insert(
-                        connections,
-                        role.Changed:Connect(
-                            function()
-                                if espConfig.enabled or tracerConfig.enabled then
-                                    updatePlayerESP(player)
-                                end
-                            end
-                        )
-                    )
-                end
-
-                -- Initial Setup if character already exists
-                if player.Character then
-                    onCharacterAdded(player, player.Character)
-                end
+    table.insert(connections, Players.PlayerAdded:Connect(function(player)
+        -- Character Added
+        local charConn
+        charConn = player.CharacterAdded:Connect(function(character)
+            -- langsung tunggu komponen penting
+            local humanoid = character:WaitForChild("Humanoid", 5)
+            local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+            if humanoid and rootPart then
+                onCharacterAdded(player, character)
             end
-        )
-    )
+        end)
+        table.insert(connections, charConn)
+
+        -- Role Changed
+        local role = player:FindFirstChild("PlayerRole")
+        if role then
+            local roleConn = role.Changed:Connect(function()
+                if espConfig.enabled or tracerConfig.enabled then
+                    updatePlayerESP(player)
+                end
+            end)
+            table.insert(connections, roleConn)
+        end
+
+        -- Initial Setup if character already exists
+        if player.Character then
+            onCharacterAdded(player, player.Character)
+        end
+    end))
 
     -- Player Removing
-    table.insert(
-        connections,
-        Players.PlayerRemoving:Connect(
-            function(player)
-                cleanUpPlayerESP(player)
-                cleanUpTracer(player)
-            end
-        )
-    )
+    table.insert(connections, Players.PlayerRemoving:Connect(function(player)
+        cleanUpPlayerESP(player)
+        cleanUpTracer(player)
+    end))
 end
+
 local function clearAllESP()
     for player in pairs(espObjects) do
         cleanUpPlayerESP(player)
