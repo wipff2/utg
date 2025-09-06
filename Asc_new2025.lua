@@ -795,7 +795,8 @@ local roleColors = {
     InfectedRunner = Color3.fromRGB(255, 0, 0)
 }
 local espFolder = Instance.new("Folder")
-espFolder.Name = "ESPFolder_" .. math.random(10000, 99999) -- Added random suffix
+espFolder.Name = "ESPFolder_" .. math.random(10000, 99999)
+espFolder.Parent = localPlayer:WaitForChild("PlayerGui")
 local espObjects = {}
 local tracerObjects = {}
 local connections = {}
@@ -1058,7 +1059,7 @@ local function createESP(player)
     end
 
     local function onCharacterAdded(player, newCharacter)
-        local humanoid = newCharacter:WaitForChild("Humanoid")
+        local humanoid = newCharacter:WaitForChild("HumanoidRootPart")
 
         -- Clean up old connection
         if espObjects[player] and espObjects[player].humanoidDiedConn then
@@ -1307,7 +1308,7 @@ local function updatePlayerESP(player)
     end
 end
 local function onCharacterAdded(player, newCharacter)
-    local humanoid = newCharacter:WaitForChild("Humanoid")
+    local humanoid = newCharacter:WaitForChild("HumanoidRootPart")
 
     -- Initialize player entry in espObjects if not exists
     if not espObjects[player] then
@@ -1885,7 +1886,6 @@ local ToggleContactDamage =
 )
 player.CharacterAdded:Connect(
     function(char)
-        local humanoid = char:WaitForChild("Humanoid")
         local hrp = char:WaitForChild("HumanoidRootPart")
 
         hrp.Touched:Connect(
@@ -2580,6 +2580,7 @@ local cacheclearer =
                 -- Membuat folder baru
                 espFolder = Instance.new("Folder")
                 espFolder.Name = "ESPFolder_" .. math.random(10000, 99999)
+                espFolder.Parent = localPlayer:WaitForChild("PlayerGui")
             end
 
             -- Memutuskan semua koneksi event
