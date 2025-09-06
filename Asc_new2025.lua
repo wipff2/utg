@@ -560,17 +560,17 @@ local function tagPlayer(player)
                     ReplicatedStorage.Animations:FindFirstChild("Base")
                 if animFolder then
                     local tagAnim = animFolder:FindFirstChild("Tag1") or animFolder:FindFirstChild("Tag2")
-if tagAnim then
-    -- stop anim lama dulu
-    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-        if track.Animation == tagAnim then
-            track:Stop()
-        end
-    end
+                    if tagAnim then
+                        -- stop anim lama dulu
+                        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                            if track.Animation == tagAnim then
+                                track:Stop()
+                            end
+                        end
 
-    local animation = animator:LoadAnimation(tagAnim)
-    animation:Play()
-end
+                        local animation = animator:LoadAnimation(tagAnim)
+                        animation:Play()
+                    end
                 end
             end
         end
@@ -1041,45 +1041,78 @@ local function createESP(player)
         queueUpdate(player)
     end
 
-local function onCharacterAdded(player, newCharacter)
-    local humanoid = newCharacter:WaitForChild("Humanoid")
-    local rootPart = newCharacter:WaitForChild("HumanoidRootPart")
+    local function onCharacterAdded(player, newCharacter)
+        local humanoid = newCharacter:WaitForChild("Humanoid")
+        local rootPart = newCharacter:WaitForChild("HumanoidRootPart")
 
-    -- Clean up old connection
-    if espObjects[player] and espObjects[player].humanoidDiedConn then
-        espObjects[player].humanoidDiedConn:Disconnect()
+        -- pastikan slot espObjects ada
+        if not espObjects[player] then
+            espObjects[player] = {connections = {}}
+        end
+
+        -- bersihkan koneksi lama
+        if espObjects[player].humanoidDiedConn then
+            espObjects[player].humanoidDiedConn:Disconnect()
+            espObjects[player].humanoidDiedConn = nil
+        end
+
+        -- koneksi event mati
+        if espConfig.ignoreDead or tracerConfig.ignoreDead then
+            espObjects[player].humanoidDiedConn =
+                humanoid.Died:Connect(
+                function()
+                    if espConfig.enabled then
+                        updateESPDisplay(player)
+                    end
+                    if tracerConfig.enabled then
+                        cleanUpTracer(player)
+                    end
+                end
+            )
+        end
+
+        -- update awal
+        if espConfig.enabled then
+            updateESPDisplay(player)
+        end
+        if tracerConfig.enabled then
+            createTracer(player)
+        end
     end
+    local function setupPlayer(player)
+        if not espObjects[player] then
+            espObjects[player] = {connections = {}}
+        end
 
-    -- Only connect death event if ignoreDead is enabled
-    if espConfig.ignoreDead or tracerConfig.ignoreDead then
-        espObjects[player].humanoidDiedConn = humanoid.Died:Connect(function()
-            if espConfig.enabled then
-                updateESPDisplay(player)
-            end
-            if tracerConfig.enabled then
-                cleanUpTracer(player)
-            end
-        end)
-    end
+        -- role change listener
+        local role = player:FindFirstChild("PlayerRole")
+        if role then
+            local roleConn =
+                role.Changed:Connect(
+                function()
+                    onRoleChanged(player)
+                end
+            )
+            table.insert(espObjects[player].connections, roleConn)
+        end
 
-    -- Initial update
-    if espConfig.enabled then
+        -- character added listener
+        local charConn =
+            player.CharacterAdded:Connect(
+            function(character)
+                onCharacterAdded(player, character)
+            end
+        )
+        table.insert(espObjects[player].connections, charConn)
+
+        -- kalau player sudah spawn
+        if player.Character then
+            onCharacterAdded(player, player.Character)
+        end
+
         updateESPDisplay(player)
     end
-    if tracerConfig.enabled then
-        createTracer(player)
-    end
 end
-    local role = player:FindFirstChild("PlayerRole")
-    if role then
-        espObjects[player].roleChangedConn = role.Changed:Connect(onRoleChanged)
-        table.insert(espObjects[player].connections, espObjects[player].roleChangedConn)
-    end
-    espObjects[player].characterAddedConn = player.CharacterAdded:Connect(onCharacterAdded)
-    table.insert(espObjects[player].connections, espObjects[player].characterAddedConn)
-    updateESPDisplay(player)
-end
-
 local function createTracer(player)
     if not tracerConfig.enabled or player == localPlayer then
         return
@@ -1299,14 +1332,17 @@ local function onCharacterAdded(player, newCharacter)
 
     -- Only connect death event if ignoreDead is enabled
     if espConfig.ignoreDead or tracerConfig.ignoreDead then
-        espObjects[player].humanoidDiedConn = humanoid.Died:Connect(function()
-            if espConfig.enabled then
-                updateESPDisplay(player)
+        espObjects[player].humanoidDiedConn =
+            humanoid.Died:Connect(
+            function()
+                if espConfig.enabled then
+                    updateESPDisplay(player)
+                end
+                if tracerConfig.enabled then
+                    cleanUpTracer(player) -- Remove tracer immediately
+                end
             end
-            if tracerConfig.enabled then
-                cleanUpTracer(player) -- Remove tracer immediately
-            end
-        end)
+        )
     end
 
     -- Initial update
@@ -1319,41 +1355,57 @@ local function onCharacterAdded(player, newCharacter)
 end
 local function setupPlayerEvents()
     -- Player Added
-    table.insert(connections, Players.PlayerAdded:Connect(function(player)
-        -- Character Added
-        local charConn
-        charConn = player.CharacterAdded:Connect(function(character)
-            -- langsung tunggu komponen penting
-            local humanoid = character:WaitForChild("Humanoid", 5)
-            local rootPart = character:WaitForChild("HumanoidRootPart", 5)
-            if humanoid and rootPart then
-                onCharacterAdded(player, character)
-            end
-        end)
-        table.insert(connections, charConn)
+    table.insert(
+        connections,
+        Players.PlayerAdded:Connect(
+            function(player)
+                -- Character Added
+                local charConn
+                charConn =
+                    player.CharacterAdded:Connect(
+                    function(character)
+                        -- langsung tunggu komponen penting
+                        local humanoid = character:WaitForChild("Humanoid", 5)
+                        local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+                        if humanoid and rootPart then
+                            onCharacterAdded(player, character)
+                        end
+                    end
+                )
+                table.insert(connections, charConn)
 
-        -- Role Changed
-        local role = player:FindFirstChild("PlayerRole")
-        if role then
-            local roleConn = role.Changed:Connect(function()
-                if espConfig.enabled or tracerConfig.enabled then
-                    updatePlayerESP(player)
+                -- Role Changed
+                local role = player:FindFirstChild("PlayerRole")
+                if role then
+                    local roleConn =
+                        role.Changed:Connect(
+                        function()
+                            if espConfig.enabled or tracerConfig.enabled then
+                                updatePlayerESP(player)
+                            end
+                        end
+                    )
+                    table.insert(connections, roleConn)
                 end
-            end)
-            table.insert(connections, roleConn)
-        end
 
-        -- Initial Setup if character already exists
-        if player.Character then
-            onCharacterAdded(player, player.Character)
-        end
-    end))
+                -- Initial Setup if character already exists
+                if player.Character then
+                    onCharacterAdded(player, player.Character)
+                end
+            end
+        )
+    )
 
     -- Player Removing
-    table.insert(connections, Players.PlayerRemoving:Connect(function(player)
-        cleanUpPlayerESP(player)
-        cleanUpTracer(player)
-    end))
+    table.insert(
+        connections,
+        Players.PlayerRemoving:Connect(
+            function(player)
+                cleanUpPlayerESP(player)
+                cleanUpTracer(player)
+            end
+        )
+    )
 end
 
 local function clearAllESP()
@@ -1784,33 +1836,44 @@ local function setNoclipState(state)
     )
 end
 -- Toggle UI
-local ToggleNoclip = Tab:CreateToggle({
-    Name = "Noclip",
-    CurrentValue = false,
-    Flag = "Noclip",
-    Callback = function(Value)
-        if uiClosed then return end
-        noclipEnabled = Value
-        print("Noclip State:", noclipEnabled)
-        -- logika aktif/nonaktif noclip langsung taruh di sini
-    end,
-})
+local ToggleNoclip =
+    Tab:CreateToggle(
+    {
+        Name = "Noclip",
+        CurrentValue = false,
+        Flag = "Noclip",
+        Callback = function(Value)
+            if uiClosed then
+                return
+            end
+            noclipEnabled = Value
+            print("Noclip State:", noclipEnabled)
+            -- logika aktif/nonaktif noclip langsung taruh di sini
+        end
+    }
+)
 
 -- Keybind UI
-local KeybindToggleNoclip = Tab:CreateKeybind({
-    Name = "TOGGLE NOCLIP (Key)",
-    CurrentKeybind = "N",
-    HoldToInteract = false,
-    Flag = "KeybindToggleNoclip",
-    Callback = function()
-        if uiClosed then return end
-        noclipEnabled = not noclipEnabled
-        pcall(function()
-            ToggleNoclip:Set(noclipEnabled) -- sinkronkan toggle UI
-        end)
-    end,
-})
-
+local KeybindToggleNoclip =
+    Tab:CreateKeybind(
+    {
+        Name = "TOGGLE NOCLIP (Key)",
+        CurrentKeybind = "N",
+        HoldToInteract = false,
+        Flag = "KeybindToggleNoclip",
+        Callback = function()
+            if uiClosed then
+                return
+            end
+            noclipEnabled = not noclipEnabled
+            pcall(
+                function()
+                    ToggleNoclip:Set(noclipEnabled) -- sinkronkan toggle UI
+                end
+            )
+        end
+    }
+)
 
 RunService.Stepped:Connect(
     function()
@@ -1895,48 +1958,63 @@ local function setTPWalkState(state)
         )
     end
 end
-local TPWalkToggle = Tab:CreateToggle({
-    Name = "Speed Boost",
-    CurrentValue = false,
-    Flag = "TPWalkToggle",
-    Callback = function(Value)
-        if uiClosed then return end
-        tpWalkEnabled = Value
-        print("TP Walk State:", tpWalkEnabled)
-        -- logika aktif/nonaktif speed boost langsung taruh di sini
-    end,
-})
+local TPWalkToggle =
+    Tab:CreateToggle(
+    {
+        Name = "Speed Boost",
+        CurrentValue = false,
+        Flag = "TPWalkToggle",
+        Callback = function(Value)
+            if uiClosed then
+                return
+            end
+            tpWalkEnabled = Value
+            print("TP Walk State:", tpWalkEnabled)
+            -- logika aktif/nonaktif speed boost langsung taruh di sini
+        end
+    }
+)
 
 -- Keybind UI
-local KeybindTPWalk = Tab:CreateKeybind({
-    Name = "TOGGLE SPEED BOOST (Key)",
-    CurrentKeybind = "H", -- default tombol
-    HoldToInteract = false,
-    Flag = "KeybindTPWalk",
-    Callback = function()
-        if uiClosed then return end
-        tpWalkEnabled = not tpWalkEnabled
-        print("TP Walk State:", tpWalkEnabled)
-        -- logika aktif/nonaktif speed boost langsung taruh di sini
-        pcall(function()
-            TPWalkToggle:Set(tpWalkEnabled) -- sync toggle UI
-        end)
-    end,
-})
+local KeybindTPWalk =
+    Tab:CreateKeybind(
+    {
+        Name = "TOGGLE SPEED BOOST (Key)",
+        CurrentKeybind = "H", -- default tombol
+        HoldToInteract = false,
+        Flag = "KeybindTPWalk",
+        Callback = function()
+            if uiClosed then
+                return
+            end
+            tpWalkEnabled = not tpWalkEnabled
+            print("TP Walk State:", tpWalkEnabled)
+            -- logika aktif/nonaktif speed boost langsung taruh di sini
+            pcall(
+                function()
+                    TPWalkToggle:Set(tpWalkEnabled) -- sync toggle UI
+                end
+            )
+        end
+    }
+)
 
 -- Slider
-local SpeedAmount = Tab:CreateSlider({
-    Name = "Speed Boost amount",
-    Range = {1, 40},
-    Increment = 1,
-    Suffix = "Speed",
-    CurrentValue = 1,
-    Flag = "TPWalkSpeedSlider",
-    Callback = function(Value)
-        walktpSpeed = Value
-        print("TP Walk Speed:", walktpSpeed)
-    end,
-})
+local SpeedAmount =
+    Tab:CreateSlider(
+    {
+        Name = "Speed Boost amount",
+        Range = {1, 40},
+        Increment = 1,
+        Suffix = "Speed",
+        CurrentValue = 1,
+        Flag = "TPWalkSpeedSlider",
+        Callback = function(Value)
+            walktpSpeed = Value
+            print("TP Walk Speed:", walktpSpeed)
+        end
+    }
+)
 
 local Section = Tab:CreateSection("Fling")
 local RunService = game:GetService("RunService")
