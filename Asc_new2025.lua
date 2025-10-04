@@ -50,20 +50,20 @@ local tagAuraRange = UserInputService.TouchEnabled and 7 or 8
 local tagEnabled = false
 local filterDead = false
 local teamCheck = false
-local legitTag = false
+local legitTag = true
 local roleFilterEnabled = false
 local stopDuringVoting = false
 local lastGlobalTagTime = 0
 local uiClosed = false
 
-local povCircleEnabled = false
-local showPOVCircle = false
-local povCircleRadius = 1.5 -- 0.5-0.9 (relative to screen)
+local povCircleEnabled = true
+local showPOVCircle = true
+local povCircleRadius = 1.3 -- 0.5-0.9 (relative to screen)
 local povCircleThickness = 1 -- pixels
 local povCircleColor = Color3.fromRGB(255, 50, 50)
 local povCircleTransparency = 1
 local rainbowColorEnabled = false
-local rainbowColorSpeed = 0.6
+local rainbowColorSpeed = 0.7
 
 local roleTagRules = {
     Crown = {"Neutral", "Frozen"},
@@ -522,12 +522,12 @@ local function tagPlayer(player)
         return
     end
 
-    -- tambahkan random offset supaya tidak selalu tepat di HRP
+    
     local offset =
         Vector3.new(
-        math.random(-5, 5) / 10, -- ±0.5 stud X
+        math.random(-5, 5) / 10, 
         0,
-        math.random(-5, 5) / 10 -- ±0.5 stud Z
+        math.random(-5, 5) / 10 
     )
 
     local args = {
@@ -574,8 +574,7 @@ local function tagPlayer(player)
                 end
             end
         end
-    else
-        warn("[ERROR] Failed to tag:", player.Name, "Error:", response)
+    
     end
 end
 local function getNearestPlayer()
