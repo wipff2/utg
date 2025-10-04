@@ -3,7 +3,7 @@ if ReplicatedStorage:FindFirstChild("shared") then
     local shared = ReplicatedStorage.shared
     if shared:FindFirstChild("cooldowns") then
         shared.cooldowns:Destroy()
-        print("SUCCES")
+        
     end
 end
 local success, err = pcall(function()
@@ -12,10 +12,10 @@ local success, err = pcall(function()
         hookfunction(Utils.InCooldown, function(action)
             return false
         end)
-        print("SUCCES")
+        
     end
 end)
 if not success then
-    warn("ERROR")
+    
     return
 end
